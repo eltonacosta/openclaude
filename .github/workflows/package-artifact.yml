@@ -1,0 +1,115 @@
+# Build the installable `.tgz` package artifact and prove it installs cleanly
+# on other computers via `npm i -g openclaude-<version>.tgz`.
+#
+# This is the "installable artifact" release path: instead of (or alongside)
+# publishing to the npm registry, the tarball is built from the repo, uploaded
+# as a GitHub Actions artifact, and validated on every supported OS × Node
+# floor. The tarball ships no node_modules — it declares the exact runtime
+# dependencies (@orama/orama, @orama/plugin-data-persistence, @vscode/ripgrep)
+# which npm resolves from the registry at install time on the target machine.
+# scripts/verify-clean-install.ts --tarball proves the real `npm i -g` of the
+# packed artifact is zero-warning, carries the required payload, has no
+# install scripts, satisfies the runtime-dependency contract, and that the
+# installed binary boots silently (`--version` + `--help`).
+#
+# Matrix note: each OS resolves a different ripgrep optional package, so the
+# same artifact is re-verified on macOS and Windows too (Linux is verified in
+# the build job), on Node 22 (floor) and Node 24 (current).
+name: Package artifact
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build-artifact:
+    name: Build & validate tarball (Linux / Node 24)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      # Pack with --ignore-scripts: the dist/ built above is reused (no
+      # redundant prepack build). `--ignore-scripts` also means the tarball
+      # is inert to build on install — npm i -g of a tarball never runs
+      # the prepare/prepack lifecycle of the installed package.
+      - name: Pack tarball
+        id: pack
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          npm pack --ignore-scripts --json --pack-destination=./artifact --loglevel=error > pack.json
+          FILENAME="$(node -p "require('./pack.json')[0].filename")"
+          VERSION="$(node -p "require('./package.json').version")"
+          mv "./artifact/${FILENAME}" "./artifact/openclaude-${VERSION}.tgz"
+          echo "tarball=openclaude-${VERSION}.tgz" >> "$GITHUB_OUTPUT"
+          ls -la ./artifact/
+
+      - name: Verify zero-warning global install (Linux)
+        run: bun run scripts/verify-clean-install.ts --tarball "./artifact/${{ steps.pack.outputs.tarball }}"
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: openclaude-tgz
+          path: ./artifact/*.tgz
+          if-no-files-found: error
+          retention-days: 30
+
+  verify-cross-os:
+    name: Verify tarball installs on ${{ matrix.os }} / Node ${{ matrix.node-version }}
+    needs: build-artifact
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+        node-version: [22, 24]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Download tarball
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: openclaude-tgz
+          path: ./openclaude-tgz
+
+      - name: Verify zero-warning global install
+        run: bun run scripts/verify-clean-install.ts --tarball "$(ls ./openclaude-tgz/*.tgz)"
+        shell: bash
