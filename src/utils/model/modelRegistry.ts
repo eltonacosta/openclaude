@@ -1,3 +1,9 @@
+import {
+  clearModelsCache,
+  loadModelsCache,
+  saveModelsCache,
+} from './modelRegistryCache.js'
+
 export interface OrbitModel {
   /** Full model ID used for API requests, e.g. "oc/big-pickle" */
   id: string
@@ -25,16 +31,25 @@ export interface UpdateModelsResult {
 /**
  * In-memory registry for models discovered from Orbit Router.
  * Keeps the active catalog alive in memory without restarting the application.
+ *
+ * The registry is hydrated from a global on-disk cache at boot
+ * (loadFromCache) and persists every successful update (updateModels), so
+ * models survive restarts without a manual `/discovery`.
  */
 export class ModelRegistry {
   private static models: OrbitModel[] = []
   private static lastUpdateResult: UpdateModelsResult | null = null
+  private static cachedApiUrl: string | undefined
 
   /**
    * Replaces the current in-memory model catalog with a new list,
    * calculating the number of newly added or updated models.
+   * When an apiUrl is provided, the result is persisted to the global cache.
    */
-  static updateModels(newModels: OrbitModel[]): UpdateModelsResult {
+  static updateModels(
+    newModels: OrbitModel[],
+    apiUrl?: string,
+  ): UpdateModelsResult {
     const previousMap = new Map<string, OrbitModel>(
       this.models.map(m => [m.id, m]),
     )
@@ -66,6 +81,15 @@ export class ModelRegistry {
       totalModels: this.models.length,
     }
     this.lastUpdateResult = result
+
+    // Persist to the global cache so models survive restarts. The cache only
+    // keeps non-empty lists, so a transient zero-model discovery cannot wipe
+    // the last known-good catalog.
+    if (apiUrl) {
+      this.cachedApiUrl = apiUrl
+      saveModelsCache(newModels, apiUrl)
+    }
+
     return result
   }
 
@@ -111,10 +135,53 @@ export class ModelRegistry {
   }
 
   /**
-   * Clears the in-memory registry.
+   * Clears the in-memory registry and the persisted cache.
    */
   static clear(): void {
     this.models = []
     this.lastUpdateResult = null
+    this.cachedApiUrl = undefined
+    clearModelsCache()
+  }
+
+  /**
+   * Hydrates the registry from the global on-disk cache.
+   *
+   * Called at boot so the last successful discovery is available without a
+   * manual `/discovery`. Returns true when models were loaded, false when
+   * there is no usable cache (or the cached apiUrl does not match the
+   * currently configured router).
+   */
+  static loadFromCache(apiUrl?: string): boolean {
+    const cache = loadModelsCache()
+    if (!cache) {
+      return false
+    }
+
+    if (apiUrl) {
+      const cached = cache.apiUrl.trim().replace(/\/+$/, '')
+      const current = apiUrl.trim().replace(/\/+$/, '')
+      if (cached !== current) {
+        return false
+      }
+    }
+
+    this.models = [...cache.models]
+    this.cachedApiUrl = cache.apiUrl
+    this.lastUpdateResult = {
+      addedCount: 0,
+      updatedCount: 0,
+      totalChanged: 0,
+      totalModels: this.models.length,
+    }
+    return true
+  }
+
+  /**
+   * Returns the apiUrl the current in-memory catalog was discovered from,
+   * if any.
+   */
+  static getCachedApiUrl(): string | undefined {
+    return this.cachedApiUrl
   }
 }

@@ -1,11 +1,13 @@
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
 import { ModelRegistry } from '../../utils/model/modelRegistry.js'
+import { setModelRegistryCachePathOverrideForTesting } from '../../utils/model/modelRegistryCache.js'
 import { setOrbitConfigPathOverrideForTesting } from '../../utils/orbitConfig.js'
 import { call } from './discovery.js'
 import type { LocalJSXCommandContext } from '../../commands.js'
 
 describe('discovery command', () => {
   beforeEach(() => {
+    setModelRegistryCachePathOverrideForTesting('/nonexistent/cache/path.json')
     ModelRegistry.clear()
     setOrbitConfigPathOverrideForTesting('/nonexistent/path/config.json')
     delete process.env.OPENAI_BASE_URL
@@ -14,6 +16,7 @@ describe('discovery command', () => {
 
   afterEach(() => {
     setOrbitConfigPathOverrideForTesting(undefined)
+    setModelRegistryCachePathOverrideForTesting(undefined)
   })
 
   it('returns instructions when no Orbit Router config is found', async () => {

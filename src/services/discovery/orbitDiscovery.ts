@@ -258,8 +258,10 @@ export async function runDiscovery(
     }
   })
 
-  // 4. Update in-memory registry without restarting the application
-  const updateResult = ModelRegistry.updateModels(updatedModelsList)
+  // 4. Update in-memory registry without restarting the application.
+  //    Passing apiUrl also persists the catalog to the global on-disk cache
+  //    so the models survive process restarts.
+  const updateResult = ModelRegistry.updateModels(updatedModelsList, apiUrl)
 
   return Object.assign(updatedModelsList, { updateResult })
 }

@@ -27,6 +27,7 @@ import { prefetchApiKeyFromApiKeyHelperIfSafe } from './utils/auth.js'
 import { clearMemoryFileCaches } from './utils/claudemd.js'
 import { getCurrentProjectConfig, getGlobalConfig } from './utils/config.js'
 import { loadOrbitConfig, applyOrbitConfigToEnv } from './utils/orbitConfig.js'
+import { ModelRegistry } from './utils/model/modelRegistry.js'
 import { logForDiagnosticsNoPII } from './utils/diagLogs.js'
 import { env } from './utils/env.js'
 import { envDynamic } from './utils/envDynamic.js'
@@ -88,6 +89,11 @@ export async function setup(
   const orbitConfig = loadOrbitConfig()
   if (orbitConfig) {
     applyOrbitConfigToEnv(orbitConfig)
+
+    // Hydrate the model registry from the global on-disk cache so the last
+    // successful /discovery is available immediately on boot. The cache is
+    // keyed to the configured router URL; a mismatch means no usable cache.
+    ModelRegistry.loadFromCache(orbitConfig.api_url)
   }
 
   // --bare / SIMPLE: skip UDS messaging server and teammate snapshot.

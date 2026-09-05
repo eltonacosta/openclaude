@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from 'bun:test'
 import { ModelRegistry } from '../../utils/model/modelRegistry.js'
+import { setModelRegistryCachePathOverrideForTesting } from '../../utils/model/modelRegistryCache.js'
 import {
   fetchRouterModels,
   indexDevModelsCatalog,
@@ -9,6 +10,7 @@ import {
 
 describe('orbitDiscovery', () => {
   beforeEach(() => {
+    setModelRegistryCachePathOverrideForTesting('/nonexistent/cache/path.json')
     ModelRegistry.clear()
   })
 

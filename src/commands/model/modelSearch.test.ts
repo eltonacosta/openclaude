@@ -2,10 +2,12 @@ import { describe, expect, it, beforeEach } from 'bun:test'
 import modelCommand from './index.js'
 import { call } from './model.js'
 import { ModelRegistry } from '../../utils/model/modelRegistry.js'
+import { setModelRegistryCachePathOverrideForTesting } from '../../utils/model/modelRegistryCache.js'
 import type { LocalJSXCommandContext } from '../../commands.js'
 
 describe('model command and search', () => {
   beforeEach(() => {
+    setModelRegistryCachePathOverrideForTesting('/nonexistent/cache/path.json')
     ModelRegistry.clear()
   })
 

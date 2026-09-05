@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
 import { call } from './login.js'
 import { ModelRegistry } from '../../utils/model/modelRegistry.js'
+import { setModelRegistryCachePathOverrideForTesting } from '../../utils/model/modelRegistryCache.js'
 import type { LocalJSXCommandContext } from '../../commands.js'
 import { loadOrbitConfig, setOrbitConfigPathOverrideForTesting } from '../../utils/orbitConfig.js'
 import { tmpdir } from 'node:os'
@@ -9,8 +10,10 @@ import { rmSync } from 'node:fs'
 
 describe('login command with Orbit Router arguments', () => {
   const testConfigPath = join(tmpdir(), `orbit-login-test-${Date.now()}.json`)
+  const testCachePath = join(tmpdir(), `models-cache-login-test-${Date.now()}.json`)
 
   beforeEach(() => {
+    setModelRegistryCachePathOverrideForTesting(testCachePath)
     ModelRegistry.clear()
     setOrbitConfigPathOverrideForTesting(testConfigPath)
     delete process.env.OPENAI_BASE_URL
@@ -20,8 +23,10 @@ describe('login command with Orbit Router arguments', () => {
 
   afterEach(() => {
     setOrbitConfigPathOverrideForTesting(undefined)
+    setModelRegistryCachePathOverrideForTesting(undefined)
     try {
       rmSync(testConfigPath, { force: true })
+      rmSync(testCachePath, { force: true })
     } catch {}
     delete process.env.OPENAI_BASE_URL
     delete process.env.OPENAI_API_KEY
