@@ -15,13 +15,19 @@
 # Matrix note: each OS resolves a different ripgrep optional package, so the
 # same artifact is re-verified on macOS and Windows too (Linux is verified in
 # the build job), on Node 22 (floor) and Node 24 (current).
+#
+# Invocation:
+#   - workflow_dispatch: manual test build on any ref (never creates tags or
+#     releases).
+#   - workflow_call from release.yml: the official release path. release.yml
+#     builds/verifies FIRST and only creates the vX.Y.Z tag + GitHub Release
+#     afterwards — a tag created by GITHUB_TOKEN does not retrigger this file's
+#     `push: tags` event, so the tag-push trigger was removed on purpose.
 name: Package artifact
 
 on:
+  workflow_call:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
 
 permissions:
   contents: read

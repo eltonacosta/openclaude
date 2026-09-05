@@ -11,13 +11,23 @@ Este repositório é um fork com integração ao **Orbit Router** (roteamento in
 
 ## Instalação
 
-### Via artifact do GitHub (1 comando)
+### Via GitHub Releases (1 comando)
 
-O CI gera o pacote instalável `.tgz` (workflow **Package artifact**), validado em Linux/macOS/Windows. Baixe o `openclaude-<versão>.tgz` na aba **Actions** do repositório e instale:
+Cada release publica o pacote instalável `openclaude-<versão>.tgz` como asset permanente na página [Releases](https://github.com/eltonacosta/openclaude/releases), validado em Linux/macOS/Windows e em Node 22/24 (workflow **Auto Release**). Baixe o `.tgz` da release mais recente e instale:
 
 ```bash
 npm install -g openclaude-<versão>.tgz
 ```
+
+### Como funciona a versão (tags automáticas)
+
+1. A versão é escolhida por você no `package.json` (`"version": "0.30.0"`).
+2. Ao dar push/merge em `main`, o CI detecta que a versão mudou para uma ainda não publicada.
+3. Ele valida que é um `X.Y.Z` estrito e **maior** que a última tag (`vX.Y.Z` nunca se repete).
+4. Só depois de buildar e validar o `.tgz` em todos os OS ele cria a tag `vX.Y.Z` e a release — as tags ficam da mais recente para a mais antiga na página Releases.
+5. Se a versão não mudou (ou já foi lançada), o push em `main` apenas passa pelo CI normal, sem tag nova.
+
+Para lançar uma nova versão: **bump no `package.json` + push em `main`**. Nada de npm: o GitHub Releases é o único ponto de distribuição.
 
 ### Via fonte (desenvolvimento)
 
