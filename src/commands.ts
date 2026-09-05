@@ -21,6 +21,7 @@ import { context, contextNonInteractive } from './commands/context/index.js'
 import cost from './commands/cost/index.js'
 import diff from './commands/diff/index.js'
 import diagnostics from './commands/diagnostics/index.js'
+import discovery from './commands/discovery/index.js'
 import dream from './commands/dream/index.js'
 import ctx_viz from './commands/ctx_viz/index.js'
 import doctor from './commands/doctor/index.js'
@@ -306,6 +307,7 @@ const COMMANDS = memoize((): Command[] => [
   ctx_viz,
   diff,
   diagnostics,
+  discovery,
   dream,
   doctor,
   effort,
@@ -381,7 +383,8 @@ const COMMANDS = memoize((): Command[] => [
   hooks,
   exportCommand,
   sandboxToggle,
-  ...(!isUsing3PServices() ? [logout, login()].filter(Boolean) : []),
+  ...(!isUsing3PServices() ? [logout].filter(Boolean) : []),
+  login(),
   passes,
   ...(peersCmd ? [peersCmd] : []),
   tasks,

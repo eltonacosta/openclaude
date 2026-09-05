@@ -1,0 +1,265 @@
+import { logForDebugging } from '../../utils/debug.js'
+import { ModelRegistry, type OrbitModel } from '../../utils/model/modelRegistry.js'
+
+export const DEFAULT_MODELS_DEV_URL = 'https://models.dev/models.json'
+export const FALLBACK_MODELS_DEV_API_URL = 'https://models.dev/api.json'
+
+export interface RouterRawModel {
+  id: string
+  context_window?: number
+  supports_efforts?: boolean
+  supports_tools?: boolean
+  description?: string
+  [key: string]: unknown
+}
+
+export interface DevModelInfo {
+  context_limit?: number
+  supports_reasoning?: boolean
+  supports_tools?: boolean
+  name?: string
+  description?: string
+}
+
+export type FetchLike = (
+  input: RequestInfo | URL | string,
+  init?: RequestInit,
+) => Promise<Response>
+
+/**
+ * Builds candidate model endpoint URLs for the given Orbit Router URL.
+ */
+export function getRouterModelsUrls(apiUrl: string): string[] {
+  const clean = apiUrl.trim().replace(/\/+$/, '')
+  if (clean.endsWith('/v1')) {
+    return [`${clean}/models`]
+  }
+  return [`${clean}/v1/models`, `${clean}/models`]
+}
+
+/**
+ * Fetches the raw model list from Orbit Router using the API key.
+ * Only models returned by this endpoint are considered available for use.
+ */
+export async function fetchRouterModels(
+  apiUrl: string,
+  apiKey: string,
+  fetchFn: FetchLike = fetch,
+): Promise<RouterRawModel[]> {
+  const urls = getRouterModelsUrls(apiUrl)
+  let lastError: unknown = null
+
+  for (const url of urls) {
+    try {
+      const response = await fetchFn(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${apiKey.trim()}`,
+          Accept: 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        lastError = new Error(`HTTP ${response.status} from ${url}`)
+        continue
+      }
+
+      const payload = (await response.json()) as {
+        data?: unknown
+      }
+
+      const rawList = Array.isArray(payload.data)
+        ? payload.data
+        : Array.isArray(payload)
+          ? payload
+          : []
+
+      const models: RouterRawModel[] = []
+      for (const item of rawList) {
+        if (!item) continue
+        if (typeof item === 'string') {
+          models.push({ id: item })
+        } else if (typeof item === 'object' && 'id' in item && typeof item.id === 'string') {
+          models.push(item as RouterRawModel)
+        }
+      }
+
+      return models
+    } catch (err) {
+      lastError = err
+      logForDebugging(`[OrbitDiscovery] Failed to fetch models from ${url}: ${String(err)}`)
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Failed to fetch models from Orbit Router at ${apiUrl}`)
+}
+
+/**
+ * Indexes the models.dev catalog for fast case-insensitive lookup by parsed base name and full ID.
+ */
+export function indexDevModelsCatalog(catalogData: Record<string, unknown>): Record<string, DevModelInfo> {
+  const index: Record<string, DevModelInfo> = {}
+
+  for (const [key, val] of Object.entries(catalogData || {})) {
+    if (!val || typeof val !== 'object') continue
+
+    // Handle models.dev/api.json structure (provider.models dictionary)
+    if ('models' in val && val.models && typeof val.models === 'object') {
+      const providerModels = val.models as Record<string, unknown>
+      for (const [modelKey, modelVal] of Object.entries(providerModels)) {
+        if (!modelVal || typeof modelVal !== 'object') continue
+        const m = modelVal as Record<string, unknown>
+        const limit = m.limit as { context?: number } | undefined
+        const info: DevModelInfo = {
+          context_limit: limit?.context ?? (m.context_limit as number | undefined),
+          supports_reasoning: (m.reasoning as boolean | undefined) ?? (m.supports_reasoning as boolean | undefined),
+          supports_tools: (m.tool_call as boolean | undefined) ?? (m.supports_tools as boolean | undefined),
+          name: m.name as string | undefined,
+          description: m.description as string | undefined,
+        }
+
+        registerModelInIndex(index, modelKey, m.id as string | undefined, info)
+      }
+    } else {
+      // Handle models.dev/models.json structure (direct dictionary of models)
+      const m = val as Record<string, unknown>
+      const limit = m.limit as { context?: number } | undefined
+      const info: DevModelInfo = {
+        context_limit: limit?.context ?? (m.context_limit as number | undefined),
+        supports_reasoning: (m.reasoning as boolean | undefined) ?? (m.supports_reasoning as boolean | undefined),
+        supports_tools: (m.tool_call as boolean | undefined) ?? (m.supports_tools as boolean | undefined),
+        name: m.name as string | undefined,
+        description: m.description as string | undefined,
+      }
+
+      registerModelInIndex(index, key, m.id as string | undefined, info)
+    }
+  }
+
+  return index
+}
+
+function registerModelInIndex(
+  index: Record<string, DevModelInfo>,
+  primaryKey: string,
+  modelId: string | undefined,
+  info: DevModelInfo,
+): void {
+  const keysToRegister = new Set<string>()
+
+  // Full key (e.g. "swiss-ai/apertus-8b")
+  keysToRegister.add(primaryKey.toLowerCase())
+
+  // Base name after slash (e.g. "apertus-8b")
+  const baseKey = primaryKey.split('/').pop()?.toLowerCase()
+  if (baseKey) keysToRegister.add(baseKey)
+
+  if (modelId) {
+    keysToRegister.add(modelId.toLowerCase())
+    const baseId = modelId.split('/').pop()?.toLowerCase()
+    if (baseId) keysToRegister.add(baseId)
+  }
+
+  for (const k of keysToRegister) {
+    if (!index[k]) {
+      index[k] = info
+    }
+  }
+}
+
+/**
+ * Downloads and indexes the models.dev reference catalog.
+ * Uses https://models.dev/models.json primarily (~297KB), falling back to api.json if needed.
+ */
+export async function fetchDevModelsCatalog(
+  fetchFn: FetchLike = fetch,
+): Promise<Record<string, DevModelInfo>> {
+  try {
+    const response = await fetchFn(DEFAULT_MODELS_DEV_URL, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    if (response.ok) {
+      const data = (await response.json()) as Record<string, unknown>
+      return indexDevModelsCatalog(data)
+    }
+  } catch (err) {
+    logForDebugging(`[OrbitDiscovery] Primary models.dev/models.json fetch failed: ${String(err)}`)
+  }
+
+  // Fallback to api.json
+  try {
+    const response = await fetchFn(FALLBACK_MODELS_DEV_API_URL, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    if (response.ok) {
+      const data = (await response.json()) as Record<string, unknown>
+      return indexDevModelsCatalog(data)
+    }
+  } catch (err) {
+    logForDebugging(`[OrbitDiscovery] Fallback models.dev/api.json fetch failed: ${String(err)}`)
+  }
+
+  return {}
+}
+
+/**
+ * Executes the full discovery and enrichment pipeline:
+ * 1. Fetches models from Orbit Router (`/v1/models`). Only these models are available for use.
+ * 2. Fetches metadata catalog from models.dev (models.json).
+ * 3. Maps and enriches each router model.
+ * 4. Updates ModelRegistry in memory.
+ */
+export async function runDiscovery(
+  apiUrl: string,
+  apiKey: string,
+  options?: {
+    fetchFn?: FetchLike
+  },
+): Promise<OrbitModel[]> {
+  const fetchFn = options?.fetchFn ?? fetch
+
+  // 1. Fetch available models from Orbit Router
+  const routerModels = await fetchRouterModels(apiUrl, apiKey, fetchFn)
+
+  // 2. Fetch metadata reference catalog
+  let devModelsCatalog: Record<string, DevModelInfo> = {}
+  try {
+    devModelsCatalog = await fetchDevModelsCatalog(fetchFn)
+  } catch {
+    devModelsCatalog = {}
+  }
+
+  // 3. Process and enrich exclusively the models from Orbit Router
+  const updatedModelsList: OrbitModel[] = routerModels.map(model => {
+    const fullId = model.id
+    const parsedName = fullId.split('/').pop() || fullId
+
+    // Lookup in catalog by parsed base name or full ID
+    const matchedDevModel =
+      devModelsCatalog[parsedName.toLowerCase()] ||
+      devModelsCatalog[fullId.toLowerCase()] ||
+      {}
+
+    return {
+      id: fullId, // Used in API inference requests
+      displayName: parsedName,
+      context_window:
+        matchedDevModel.context_limit || model.context_window || 4096,
+      supports_efforts:
+        matchedDevModel.supports_reasoning ?? model.supports_efforts ?? false,
+      supports_tools:
+        matchedDevModel.supports_tools ?? model.supports_tools ?? true,
+      description: matchedDevModel.description ?? model.description,
+      raw: model,
+    }
+  })
+
+  // 4. Update in-memory registry without restarting the application
+  const updateResult = ModelRegistry.updateModels(updatedModelsList)
+
+  return Object.assign(updatedModelsList, { updateResult })
+}

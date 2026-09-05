@@ -26,6 +26,7 @@ import { checkAndRestoreTerminalBackup } from './utils/appleTerminalBackup.js'
 import { prefetchApiKeyFromApiKeyHelperIfSafe } from './utils/auth.js'
 import { clearMemoryFileCaches } from './utils/claudemd.js'
 import { getCurrentProjectConfig, getGlobalConfig } from './utils/config.js'
+import { loadOrbitConfig, applyOrbitConfigToEnv } from './utils/orbitConfig.js'
 import { logForDiagnosticsNoPII } from './utils/diagLogs.js'
 import { env } from './utils/env.js'
 import { envDynamic } from './utils/envDynamic.js'
@@ -81,6 +82,12 @@ export async function setup(
   // Set custom session ID if provided
   if (customSessionId) {
     switchSession(asSessionId(customSessionId))
+  }
+
+  // Load Orbit Router configuration if present
+  const orbitConfig = loadOrbitConfig()
+  if (orbitConfig) {
+    applyOrbitConfigToEnv(orbitConfig)
   }
 
   // --bare / SIMPLE: skip UDS messaging server and teammate snapshot.

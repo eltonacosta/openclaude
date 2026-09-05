@@ -53,6 +53,7 @@ import {
   isFastModeSupportedByModel,
 } from '../../utils/fastMode.js'
 import { MODEL_ALIASES } from '../../utils/model/aliases.js'
+import { ModelRegistry } from '../../utils/model/modelRegistry.js'
 import {
   checkOpus1mAccess,
   checkSonnet1mAccess,
@@ -675,9 +676,11 @@ function legacyDiscoveryStateForOptions(options: {
 
 function ModelPickerWrapper({
   discoveryContext,
+  initialQuery,
   onDone,
 }: {
   discoveryContext: ModelDiscoveryContext | null
+  initialQuery?: string
   onDone: (result?: string, options?: { display?: CommandResultDisplay }) => void
 }) {
   const mainLoopModel = useAppState((s: AppState) => s.mainLoopModel)
@@ -1021,6 +1024,7 @@ function ModelPickerWrapper({
       onCancel={handleCancel}
       isStandaloneCommand
       allowProfileSwitch
+      initialQuery={initialQuery}
       showFastModeNotice={
         isFastModeEnabled() &&
         isFastMode &&
@@ -1357,10 +1361,35 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
   }
 
   if (trimmedArgs) {
-    logEvent('tengu_model_command_inline', {
-      args: trimmedArgs as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
-    return <SetModelAndClose args={trimmedArgs} onDone={onDone} />
+    const orbitModel = ModelRegistry.getModel(trimmedArgs)
+    const isAlias = isKnownAlias(trimmedArgs)
+    if (orbitModel || isAlias) {
+      logEvent('tengu_model_command_inline', {
+        args: trimmedArgs as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+      })
+      return <SetModelAndClose args={trimmedArgs} onDone={onDone} />
+    }
+
+    try {
+      const { valid } = await validateModel(trimmedArgs)
+      if (valid) {
+        logEvent('tengu_model_command_inline', {
+          args: trimmedArgs as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+        })
+        return <SetModelAndClose args={trimmedArgs} onDone={onDone} />
+      }
+    } catch {
+      // Fall through to search in ModelPicker
+    }
+
+    const discoveryContext = await loadModelDiscoveryContext()
+    return (
+      <ModelPickerWrapper
+        discoveryContext={discoveryContext}
+        initialQuery={trimmedArgs}
+        onDone={onDone}
+      />
+    )
   }
 
   const discoveryContext = await loadModelDiscoveryContext()

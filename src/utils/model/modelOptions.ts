@@ -53,6 +53,7 @@ import { getCachedNvidiaNimModelOptions, isNvidiaNimProvider } from './nvidiaNim
 import { getCachedMiniMaxModelOptions, isMiniMaxProvider } from './minimaxModels.js'
 import { getCachedXiaomiMimoModelOptions, isXiaomiMimoProvider } from './xiaomi-mimoModels.js'
 import { getAntModels } from './antModels.js'
+import { ModelRegistry } from './modelRegistry.js'
 
 // @[MODEL LAUNCH]: Update all the available and default model option strings below.
 
@@ -534,6 +535,24 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
   const inactiveProfileOptions: ModelOption[] = profileEnvApplied
     ? getInactiveProviderProfileOptions(activeProfileId)
     : []
+
+  if (ModelRegistry.hasModels()) {
+    const defaultOption = getDefaultOptionForUser(fastMode)
+    const orbitOptions: ModelOption[] = ModelRegistry.getModels().map(m => {
+      const contextStr =
+        m.context_window >= 1000
+          ? `${Math.round(m.context_window / 1000)}k`
+          : `${m.context_window}`
+      const toolsMark = m.supports_tools ? '✓' : '✗'
+      const effortsMark = m.supports_efforts ? '✓' : '✗'
+      return {
+        value: m.id,
+        label: m.displayName !== m.id ? `${m.displayName} (${m.id})` : m.displayName,
+        description: `Context: ${contextStr} · Tools: ${toolsMark} · Reasoning: ${effortsMark}`,
+      }
+    })
+    return [defaultOption, ...orbitOptions, ...inactiveProfileOptions]
+  }
 
   if (getAPIProvider() === 'github') {
     return [

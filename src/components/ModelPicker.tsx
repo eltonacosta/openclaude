@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import capitalize from 'lodash-es/capitalize.js';
 import * as React from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { FAST_MODE_MODEL_DISPLAY, isFastModeAvailable, isFastModeCooldown, isFastModeEnabled } from 'src/utils/fastMode.js';
-import { Box, Text } from '../ink.js';
+import { Box, Text, useInput } from '../ink.js';
 import { useKeybindings } from '../keybindings/useKeybinding.js';
 import { useAppState, useSetAppState } from '../state/AppState.js';
 import { convertEffortValueToLevel, type EffortLevel, getAvailableEffortLevels, getDefaultEffortForModel, modelSupportsEffort, modelSupportsMaxEffort, resolvePickerEffortPersistence, toPersistableEffort } from '../utils/effort.js';
@@ -19,6 +19,8 @@ import { Byline } from './design-system/Byline.js';
 import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
 import { Pane } from './design-system/Pane.js';
 import { effortLevelToSymbol } from './EffortIndicator.js';
+import { SearchBox } from './SearchBox.js';
+import { useSearchInput } from '../hooks/useSearchInput.js';
 export type ModelPickerDiscoveryState = {
   message: string;
   tone?: 'info' | 'success' | 'warning' | 'error';
@@ -61,6 +63,7 @@ export type Props = {
    * leave this off so they never surface an option they cannot honor.
    */
   allowProfileSwitch?: boolean;
+  initialQuery?: string;
 };
 const NO_PREFERENCE = '__NO_PREFERENCE__';
 function normalizeModelPickerValue(value: unknown): string | null {
@@ -106,8 +109,46 @@ export function ModelPicker(t0) {
     optionsOverride,
     discoveryState,
     onRefresh,
-    allowProfileSwitch
+    allowProfileSwitch,
+    initialQuery,
   } = t0;
+  const [searchQuery, setSearchQuery] = useState(initialQuery ?? '');
+  const [isSearchMode, setIsSearchMode] = useState(Boolean(initialQuery));
+
+  const {
+    query: searchInputQuery,
+    setQuery: setSearchInputQuery,
+    cursorOffset: searchCursorOffset,
+  } = useSearchInput({
+    isActive: isSearchMode,
+    initialQuery: initialQuery ?? '',
+    onExit: () => {
+      setIsSearchMode(false);
+    },
+    onCancel: () => {
+      if (searchQuery) {
+        setSearchInputQuery('');
+        setSearchQuery('');
+      } else {
+        setIsSearchMode(false);
+      }
+    },
+  });
+
+  useEffect(() => {
+    setSearchQuery(searchInputQuery);
+  }, [searchInputQuery]);
+
+  useInput(
+    (input, _key) => {
+      if (!isSearchMode) {
+        if (input === '/' || input === 's') {
+          setIsSearchMode(true);
+        }
+      }
+    },
+    { isActive: !isSearchMode },
+  );
   const setAppState = useSetAppState();
   const exitState = useExitOnCtrlCDWithKeybindings();
   const initialValue = initial === null ? NO_PREFERENCE : initial;
@@ -190,24 +231,45 @@ export function ModelPicker(t0) {
     t5 = $[13];
   }
   const selectOptions = t5;
+  const filteredSelectOptions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return selectOptions;
+    return selectOptions.filter(opt => {
+      const label = String(opt.label || '').toLowerCase();
+      const val = String(opt.value || '').toLowerCase();
+      const desc = String(opt.description || '').toLowerCase();
+      return label.includes(q) || val.includes(q) || desc.includes(q);
+    });
+  }, [selectOptions, searchQuery]);
+
   let t6;
-  if ($[14] !== initialValue || $[15] !== selectOptions) {
-    t6 = selectOptions.find(_ => optionMatchesPickerValue(_, initialValue))?.value ?? selectOptions[0]?.value ?? undefined;
+  if ($[14] !== initialValue || $[15] !== filteredSelectOptions) {
+    t6 = filteredSelectOptions.find(_ => optionMatchesPickerValue(_, initialValue))?.value ?? filteredSelectOptions[0]?.value ?? undefined;
     $[14] = initialValue;
-    $[15] = selectOptions;
+    $[15] = filteredSelectOptions;
     $[16] = t6;
   } else {
     t6 = $[16];
   }
   const initialFocusValue = t6;
   const [focusedValue, setFocusedValue] = useState(initialFocusValue ?? initialValue);
-  const visibleCount = Math.min(10, selectOptions.length);
-  const hiddenCount = Math.max(0, selectOptions.length - visibleCount);
+
+  useEffect(() => {
+    if (filteredSelectOptions.length > 0 && !filteredSelectOptions.some(opt => opt.value === focusedValue)) {
+      const nextFocus = filteredSelectOptions[0]?.value;
+      if (nextFocus) {
+        setFocusedValue(nextFocus);
+      }
+    }
+  }, [filteredSelectOptions, focusedValue]);
+
+  const visibleCount = Math.min(10, filteredSelectOptions.length);
+  const hiddenCount = Math.max(0, filteredSelectOptions.length - visibleCount);
   let t7;
-  if ($[17] !== focusedValue || $[18] !== selectOptions) {
-    t7 = selectOptions.find(opt_1 => opt_1.value === focusedValue)?.label;
+  if ($[17] !== focusedValue || $[18] !== filteredSelectOptions) {
+    t7 = filteredSelectOptions.find(opt_1 => opt_1.value === focusedValue)?.label;
     $[17] = focusedValue;
-    $[18] = selectOptions;
+    $[18] = filteredSelectOptions;
     $[19] = t7;
   } else {
     t7 = $[19];
@@ -379,20 +441,44 @@ export function ModelPicker(t0) {
   const refreshHint = onRefresh ? <ConfigurableShortcutHint action="modelPicker:refresh" context="ModelPicker" fallback="r" description="refresh models" /> : null;
   const discoveryLine = discoveryState ? <Text color={mapDiscoveryToneToColor(discoveryState.tone)}>{discoveryState.message}{refreshHint ? <Text color="subtle"> {" "}· {refreshHint}</Text> : null}</Text> : refreshHint ? <Text dimColor={true}>{refreshHint}</Text> : null;
   const t19 = <Box marginBottom={1} flexDirection="column">{t15}{t17}{t18}{discoveryLine}</Box>;
+  const searchBoxElement = (
+    <Box marginBottom={1} flexDirection="column">
+      <SearchBox
+        query={searchQuery}
+        placeholder="Search models… (/ to search, ↓ to select)"
+        isFocused={isSearchMode}
+        isTerminalFocused={true}
+        cursorOffset={searchCursorOffset}
+      />
+    </Box>
+  );
+
   const t20 = onCancel ?? _temp4;
-  let t21;
-  if ($[49] !== handleFocus || $[50] !== handleSelect || $[51] !== initialFocusValue || $[52] !== selectOptions || $[53] !== t20 || $[54] !== visibleCount) {
-    t21 = <Box flexDirection="column"><Select defaultValue={initialFocusValue} defaultFocusValue={initialFocusValue} options={selectOptions} onChange={handleSelect} onFocus={handleFocus} onCancel={t20} visibleOptionCount={visibleCount} /></Box>;
-    $[49] = handleFocus;
-    $[50] = handleSelect;
-    $[51] = initialFocusValue;
-    $[52] = selectOptions;
-    $[53] = t20;
-    $[54] = visibleCount;
-    $[56] = t21;
-  } else {
-    t21 = $[56];
-  }
+  const selectElement = filteredSelectOptions.length > 0 ? (
+    <Box flexDirection="column">
+      <Select
+        defaultValue={initialFocusValue}
+        defaultFocusValue={initialFocusValue}
+        options={filteredSelectOptions}
+        onChange={handleSelect}
+        onFocus={handleFocus}
+        onCancel={t20}
+        visibleOptionCount={visibleCount}
+        isDisabled={isSearchMode}
+      />
+    </Box>
+  ) : (
+    <Box paddingY={1} paddingLeft={2}>
+      <Text dimColor>No models match &quot;{searchQuery}&quot;</Text>
+    </Box>
+  );
+
+  const t21 = (
+    <Box flexDirection="column">
+      {searchBoxElement}
+      {selectElement}
+    </Box>
+  );
   let t22;
   if ($[57] !== hiddenCount) {
     t22 = hiddenCount > 0 && <Box paddingLeft={3}><Text dimColor={true}>and {hiddenCount} more…</Text></Box>;
@@ -440,12 +526,18 @@ export function ModelPicker(t0) {
   } else {
     t26 = $[73];
   }
+  const searchHint = isSearchMode ? (
+    <KeyboardShortcutHint shortcut="↓" action="select from list" />
+  ) : (
+    <KeyboardShortcutHint shortcut="/" action="search" />
+  );
   let t27;
-  if ($[74] !== exitState || $[75] !== isStandaloneCommand || $[76] !== refreshHint) {
-    t27 = isStandaloneCommand && <Text dimColor={true} italic={true}>{exitState.pending ? <>Press {exitState.keyName} again to exit</> : <Byline><KeyboardShortcutHint shortcut="Enter" action="confirm" />{refreshHint}<ConfigurableShortcutHint action="select:cancel" context="Select" fallback="Esc" description="exit" /></Byline>}</Text>;
+  if ($[74] !== exitState || $[75] !== isStandaloneCommand || $[76] !== refreshHint || $[83] !== searchHint) {
+    t27 = isStandaloneCommand && <Text dimColor={true} italic={true}>{exitState.pending ? <>Press {exitState.keyName} again to exit</> : <Byline><KeyboardShortcutHint shortcut="Enter" action="confirm" />{searchHint}{refreshHint}<ConfigurableShortcutHint action="select:cancel" context="Select" fallback="Esc" description="exit" /></Byline>}</Text>;
     $[74] = exitState;
     $[75] = isStandaloneCommand;
     $[76] = refreshHint;
+    $[83] = searchHint;
     $[82] = t27;
   } else {
     t27 = $[82];

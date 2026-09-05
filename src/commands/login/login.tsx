@@ -30,6 +30,10 @@ import {
 } from '../../utils/permissions/bypassPermissionsKillswitch.js'
 import { resetUserCache } from '../../utils/user.js'
 
+import { saveOrbitConfig } from '../../utils/orbitConfig.js'
+import { runDiscovery } from '../../services/discovery/orbitDiscovery.js'
+import { ModelRegistry } from '../../utils/model/modelRegistry.js'
+
 type LoginCompletion =
   | ConsoleOAuthFlowResult
   | {
@@ -39,7 +43,61 @@ type LoginCompletion =
 export async function call(
   onDone: LocalJSXCommandOnDone,
   context: LocalJSXCommandContext,
+  args?: string,
 ): Promise<React.ReactNode> {
+  const trimmedArgs = args?.trim()
+  if (trimmedArgs) {
+    const parts = trimmedArgs.split(/\s+/)
+    if (parts.length >= 2) {
+      const [apiUrl, apiKey] = parts
+      try {
+        const savedConfig = saveOrbitConfig(apiUrl!, apiKey!)
+        const models = await runDiscovery(savedConfig.api_url, savedConfig.api_key)
+
+        context.onChangeAPIKey()
+        context.setMessages(stripSignatureBlocks)
+        resetCostState()
+        resetUserCache()
+
+        if (models.length > 0) {
+          const firstModel = models[0]!
+          context.setAppState(prev => ({
+            ...prev,
+            mainLoopModel: firstModel.id,
+            authVersion: prev.authVersion + 1,
+          }))
+        } else {
+          context.setAppState(prev => ({
+            ...prev,
+            authVersion: prev.authVersion + 1,
+          }))
+        }
+
+        const updateResult = (models as any).updateResult ?? ModelRegistry.getLastUpdateResult()
+        const changedCount = updateResult?.totalChanged ?? models.length
+        const changeSummary = `${changedCount} modelos atualizados ou adicionados`
+
+        onDone(
+          `Orbit Router login successful!\nRouter URL: ${savedConfig.api_url}\n${changeSummary}.`,
+          { display: 'system' },
+        )
+        return null
+      } catch (err) {
+        onDone(
+          `Orbit Router login failed: ${err instanceof Error ? err.message : String(err)}`,
+          { display: 'system' },
+        )
+        return null
+      }
+    } else {
+      onDone(
+        'Usage: /login <API_URL> <API_KEY>\nExample: /login https://ai.servhub.xyz/v1 sk-d3bb44760a989aee-qdimps-0d5e8888',
+        { display: 'system' },
+      )
+      return null
+    }
+  }
+
   return (
     <Login
       onDone={async result => {

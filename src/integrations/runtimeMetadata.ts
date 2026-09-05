@@ -6,6 +6,7 @@ import {
   getOpenAIContextWindowMatches,
   getOpenAIMaxOutputTokenMatches,
 } from '../utils/model/openaiContextWindows.js'
+import { ModelRegistry } from '../utils/model/modelRegistry.js'
 import { getCachedModelsSync } from './discoveryCache.js'
 import {
   getDiscoveryCacheKey,
@@ -530,6 +531,8 @@ export function resolveModelRuntimeLimits(options: {
     modelApiName,
     runtimeEnv,
   )
+  const orbitModel =
+    ModelRegistry.getModel(options.model) ?? ModelRegistry.getModel(modelApiName)
 
   // Precedence (high → low):
   // 1. exact env override
@@ -537,7 +540,7 @@ export function resolveModelRuntimeLimits(options: {
   //    a broad base-model env *prefix*)
   // 3. env *prefix* override
   // 4. settings.json `modelLimits` (explicit user pin)
-  // 5. discovery cache
+  // 5. discovery cache / ModelRegistry
   // 6. model descriptor default
   // Discovery stays authoritative over the descriptor: a gateway's advertised
   // `context_length` is the endpoint's real cap (it may legitimately be a
@@ -553,6 +556,7 @@ export function resolveModelRuntimeLimits(options: {
   return {
     contextWindow:
       externalContextWindow.exact ??
+      orbitModel?.context_window ??
       catalogEntry?.contextWindow ??
       externalContextWindow.prefix ??
       externalContextWindow.settings ??
