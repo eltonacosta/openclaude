@@ -52,7 +52,7 @@ describe('login command with Orbit Router arguments', () => {
       resultMessage = msg || ''
     }
 
-    let appState: any = { authVersion: 1, mainLoopModel: undefined }
+    let appState: any = { authVersion: 1, mainLoopModel: 'oc/small-pickle' }
     const mockContext = {
       onChangeAPIKey: () => {},
       setMessages: () => {},
@@ -80,7 +80,7 @@ describe('login command with Orbit Router arguments', () => {
       }
       return new Response(
         JSON.stringify({
-          data: [{ id: 'oc/big-pickle' }],
+          data: [{ id: 'oc/big-pickle' }, { id: 'oc/small-pickle' }],
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       )
@@ -96,7 +96,7 @@ describe('login command with Orbit Router arguments', () => {
       expect(jsx).toBeNull()
       expect(resultMessage).toContain('Orbit Router login successful!')
       expect(resultMessage).toContain('https://ai.servhub.xyz/v1')
-      expect(resultMessage).toContain('1 modelos atualizados ou adicionados')
+      expect(resultMessage).toContain('2 modelos atualizados ou adicionados')
 
       // Check process.env was updated
       expect(process.env.OPENAI_BASE_URL).toBe('https://ai.servhub.xyz/v1')
@@ -113,7 +113,7 @@ describe('login command with Orbit Router arguments', () => {
       expect(ModelRegistry.getModel('oc/big-pickle')?.displayName).toBe('big-pickle')
 
       // Check appState model selection
-      expect(appState.mainLoopModel).toBe('oc/big-pickle')
+      expect(appState.mainLoopModel).toBe('oc/small-pickle')
       expect(appState.authVersion).toBe(2)
     } finally {
       globalThis.fetch = originalFetch

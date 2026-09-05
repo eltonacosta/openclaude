@@ -113,6 +113,43 @@ describe('orbitDiscovery', () => {
     expect(result[0]?.supports_tools).toBe(true)
   })
 
+  it('enriches router IDs with provider prefixes from the models.dev catalog', async () => {
+    const mockFetch: FetchLike = async input => {
+      const url = String(input)
+      const payload = url.includes('models.dev')
+        ? {
+            'google/gemini-3.8-flash': {
+              id: 'google/gemini-3.8-flash',
+              name: 'Gemini 3.8 Flash',
+              reasoning: true,
+              tool_call: true,
+              limit: { context: 1048576 },
+            },
+          }
+        : { data: [{ id: 'ag/gemini-3.8-flash-high' }] }
+
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const result = await runDiscovery(
+      'https://ai.servhub.xyz/v1',
+      'sk-test',
+      { fetchFn: mockFetch },
+    )
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      id: 'ag/gemini-3.8-flash-high',
+      displayName: 'gemini-3.8-flash-high',
+      context_window: 1048576,
+      supports_efforts: true,
+      supports_tools: true,
+    })
+    expect(ModelRegistry.getModels()[0]?.id).toBe('ag/gemini-3.8-flash-high')
+  })
   it('runs discovery, enriches exclusively router models, and updates ModelRegistry', async () => {
     const mockRouterResponse = {
       data: [

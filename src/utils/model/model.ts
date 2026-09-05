@@ -31,6 +31,7 @@ import {
 } from './providers.js'
 import { LIGHTNING_BOLT } from '../../constants/figures.js'
 import { isModelAllowed } from './modelAllowlist.js'
+import { ModelRegistry } from './modelRegistry.js'
 import { type ModelAlias, isModelAlias } from './aliases.js'
 import { capitalize } from '../stringUtils.js'
 import { DEFAULT_GEMINI_MODEL } from '../providerProfile.js'
@@ -148,6 +149,12 @@ export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
   } else {
     const settings = getSettings_DEPRECATED() || {}
     const setting = normalizeModelSetting(settings.model)
+    const hasRegistryModels = ModelRegistry.hasModels()
+    const registryModel = hasRegistryModels
+      ? ModelRegistry.getModel(setting ?? '')?.id
+      : undefined
+    const persistedOrbitModel = registryModel ??
+      (hasRegistryModels ? ModelRegistry.getModels()[0]?.id : undefined)
     // Read the model env var that matches the active provider to prevent
     // cross-provider leaks (e.g. ANTHROPIC_MODEL sent to the OpenAI API).
     //
@@ -173,13 +180,15 @@ export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
       // consume its dedicated setting here rather than falling through to a
       // saved model from an unrelated provider.
       ? getAllowedConcentrateConfigModel()
-      : (provider === 'gemini' ? process.env.GEMINI_MODEL : undefined) ||
-        (provider === 'mistral' ? process.env.MISTRAL_MODEL : undefined) ||
-        (provider === 'minimax' ? getMiniMaxModelEnv() : undefined) ||
-        (isOpenAIShimProvider ? process.env.OPENAI_MODEL : undefined) ||
-        (provider === 'firstParty' ? process.env.ANTHROPIC_MODEL : undefined) ||
-        setting ||
-        undefined
+      : hasRegistryModels
+        ? persistedOrbitModel
+        : (provider === 'gemini' ? process.env.GEMINI_MODEL : undefined) ||
+          (provider === 'mistral' ? process.env.MISTRAL_MODEL : undefined) ||
+          (provider === 'minimax' ? getMiniMaxModelEnv() : undefined) ||
+          (isOpenAIShimProvider ? process.env.OPENAI_MODEL : undefined) ||
+          (provider === 'firstParty' ? process.env.ANTHROPIC_MODEL : undefined) ||
+          setting ||
+          undefined
   }
 
   // Ignore the user-specified model if it's not in the availableModels allowlist.

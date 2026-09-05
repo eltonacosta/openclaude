@@ -148,19 +148,29 @@ function registerModelInIndex(
   info: DevModelInfo,
 ): void {
   const keysToRegister = new Set<string>()
+  const registerName = (name: string | undefined): void => {
+    if (!name) return
+    const normalized = name.trim().toLowerCase()
+    if (!normalized) return
 
-  // Full key (e.g. "swiss-ai/apertus-8b")
-  keysToRegister.add(primaryKey.toLowerCase())
+    keysToRegister.add(normalized)
+    const baseName = normalized.split('/').pop()
+    if (baseName) keysToRegister.add(baseName)
 
-  // Base name after slash (e.g. "apertus-8b")
-  const baseKey = primaryKey.split('/').pop()?.toLowerCase()
-  if (baseKey) keysToRegister.add(baseKey)
-
-  if (modelId) {
-    keysToRegister.add(modelId.toLowerCase())
-    const baseId = modelId.split('/').pop()?.toLowerCase()
-    if (baseId) keysToRegister.add(baseId)
+    // models.dev names are sometimes human-readable while router IDs use
+    // kebab-case (for example, "Gemini 3.8 Flash" -> "gemini-3.8-flash").
+    const slug = normalized
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    if (slug) keysToRegister.add(slug)
   }
+
+  // Register every catalog identifier and the human-readable model name.
+  // Router providers may use a different prefix than models.dev, so the
+  // provider-free aliases are needed for variant matching.
+  registerName(primaryKey)
+  registerName(modelId)
+  registerName(info.name)
 
   for (const k of keysToRegister) {
     if (!index[k]) {
@@ -182,11 +192,13 @@ function findDevModelInfo(
   }
 
   // Router IDs often add a provider prefix and a serving variant, such as
-  // "agy/gemini-3.8-flash-high" for the models.dev entry "gemini-3.8-flash".
-  // Prefer the longest contained catalog name so specific models win over
-  // shorter names such as "flash".
+  // "ag/gemini-3.8-flash-high" for the models.dev entry
+  // "google/gemini-3.8-flash". Compare both the complete router ID and its
+  // provider-free name, then prefer the longest catalog alias.
   return Object.entries(catalog)
-    .filter(([catalogName]) => parsedName.includes(catalogName))
+    .filter(([catalogName]) =>
+      normalizedModelId.includes(catalogName) || parsedName.includes(catalogName),
+    )
     .sort(([left], [right]) => right.length - left.length)
     .at(0)?.[1]
 }

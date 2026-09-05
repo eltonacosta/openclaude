@@ -29,6 +29,7 @@ import {
   resetBypassPermissionsCheck,
 } from '../../utils/permissions/bypassPermissionsKillswitch.js'
 import { resetUserCache } from '../../utils/user.js'
+import { updateSettingsForSource } from '../../utils/settings/settings.js'
 
 import { saveOrbitConfig } from '../../utils/orbitConfig.js'
 import { runDiscovery } from '../../services/discovery/orbitDiscovery.js'
@@ -60,12 +61,21 @@ export async function call(
         resetUserCache()
 
         if (models.length > 0) {
-          const firstModel = models[0]!
-          context.setAppState(prev => ({
-            ...prev,
-            mainLoopModel: firstModel.id,
-            authVersion: prev.authVersion + 1,
-          }))
+          context.setAppState(prev => {
+            const previousModel = prev.mainLoopModel
+            const selectedModel =
+              previousModel && models.some(model => model.id === previousModel)
+                ? previousModel
+                : models[0]!.id
+
+            updateSettingsForSource('userSettings', { model: selectedModel })
+
+            return {
+              ...prev,
+              mainLoopModel: selectedModel,
+              authVersion: prev.authVersion + 1,
+            }
+          })
         } else {
           context.setAppState(prev => ({
             ...prev,
