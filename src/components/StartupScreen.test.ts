@@ -111,31 +111,15 @@ function setupOpenAIMode(baseUrl: string, model: string): void {
   process.env.OPENAI_API_KEY = 'test-key'
 }
 
-describe('printStartupScreen logo', () => {
-  test('renders CLAUDE with a D-shaped D instead of an O-shaped block', () => {
-    ;(globalThis as Record<string, unknown>).MACRO = { VERSION: 'test-version' }
-    Object.defineProperty(process.stdout, 'isTTY', {
-      configurable: true,
-      value: true,
-    })
-
-    let output = ''
-    process.stdout.write = ((chunk: string | Uint8Array) => {
-      output += chunk.toString()
-      return true
-    }) as typeof process.stdout.write
-
-    printStartupScreen()
-
-    const plainOutput = stripAnsi(output)
-    expect(plainOutput).toContain('██████╗  ███████╗')
-    expect(plainOutput).toContain('██║  ██║ █████╗')
-    expect(plainOutput).toContain('██████╔╝ ███████╗')
-    expect(plainOutput).not.toContain('██║   ██║ █████╗')
+describe('printStartupScreen wordmark', () => {
+  test('renders the ORBIT + CODE gradient logo', () => {
+    const out = renderStartupScreen(120)
+    expect(out).toContain('██████╗   ██████╗')
+    expect(out).toContain('██████╗     ██████╗')
   })
 })
 
-// --- Logo layout: one centered row on wide terminals, stacked fallback ---
+// --- Layout: figlet logo left, info right; stacked fallback ---
 
 function renderStartupScreen(columns: number): string {
   ;(globalThis as Record<string, unknown>).MACRO = { VERSION: 'test-version' }
@@ -160,70 +144,86 @@ function renderStartupScreen(columns: number): string {
   return stripAnsi(output)
 }
 
-function logoLines(plainOutput: string): string[] {
-  // Letter rows contain █; the bottom shadow row only ╚═╝ glyphs. Neither
-  // pattern occurs in the tagline, info box, or version line.
-  return plainOutput.split('\n').filter(line => line.includes('█') || line.includes('╚═╝'))
-}
+// --- Layout: figlet logo left, info right; stacked fallback ---
 
-// Visible widths of the current art: OPEN 38 + gap 2 + CLAUDE 54.
-const ONE_ROW_WIDTH = 94
-const BOX_WIDTH = 62
+// Two-column needs ORBIT width (49) + gap 4 + right min (30).
+const TWO_COL_WIDTH = 83
 
 describe('printStartupScreen layout', () => {
-  test('wide terminal renders OPEN and CLAUDE side by side as one 6-line block', () => {
+  test('wide terminal renders logo and info side by side', () => {
     const out = renderStartupScreen(120)
-    const logo = logoLines(out)
-    expect(logo).toHaveLength(6)
-    // End of N (OPEN) and start of C (CLAUDE) share a line
-    expect(logo[0]).toContain('███╗   ██╗   ██████╗ ██╗')
-  })
-
-  test('one-row logo is centered and rows are aligned as a block', () => {
-    const out = renderStartupScreen(120)
-    const logo = logoLines(out)
-    const pad = ' '.repeat(Math.floor((120 - ONE_ROW_WIDTH) / 2))
-    expect(logo[1]!.startsWith(`${pad}██╔═══██╗`)).toBe(true)
-    expect(logo[4]!.startsWith(`${pad}╚██████╔╝`)).toBe(true)
+    const orbitLine = out.split('\n').find(line => line.includes('██████╗   ██████╗'))
+    expect(orbitLine).toBeDefined()
+    // Tagline shares a row with the first ORBIT row
+    expect(orbitLine).toContain('✦')
     for (const line of out.split('\n')) {
       expect(line.length).toBeLessThanOrEqual(120)
     }
   })
 
-  test('narrow terminal falls back to two stacked centered blocks', () => {
-    const out = renderStartupScreen(80)
-    expect(logoLines(out)).toHaveLength(12)
-    expect(out).not.toContain('███╗   ██╗   ██████╗')
-    for (const line of out.split('\n')) {
-      expect(line.length).toBeLessThanOrEqual(80)
+  test('each column is centered inside its own half', () => {
+    const out = renderStartupScreen(120)
+    const colW = Math.floor((120 - 4) / 2)
+    // ORBIT is 49 wide → left pad (58-49)/2 = 4
+    const orbitLine = out.split('\n').find(line => line.includes('██████╗   ██████╗'))
+    expect(orbitLine!.startsWith('    ')).toBe(true)
+    // Right column starts at 58 + 4 = 62
+    const boxTop = out.split('\n').find(line => /╔═{10,}/.test(line))
+    expect(boxTop!.lastIndexOf('╔')).toBe(colW + 4)
+  })
+
+  test('narrow terminal stacks logo above info', () => {
+    const out = renderStartupScreen(70)
+    const lines = out.split('\n')
+    const logoIdx = lines.findIndex(line => line.includes('██████╗   ██████╗'))
+    const providerIdx = lines.findIndex(line => line.includes('Provider'))
+    expect(logoIdx).toBeGreaterThanOrEqual(0)
+    // Stacked: no shared row between logo and provider box
+    expect(lines[logoIdx]).not.toContain('Provider')
+    expect(providerIdx).toBeGreaterThan(logoIdx)
+    for (const line of lines) {
+      expect(line.length).toBeLessThanOrEqual(70)
     }
   })
 
-  test('layout switches exactly at the one-row width', () => {
-    expect(logoLines(renderStartupScreen(ONE_ROW_WIDTH))).toHaveLength(6)
-    expect(logoLines(renderStartupScreen(ONE_ROW_WIDTH - 1))).toHaveLength(12)
+  test('layout switches exactly at the two-column width', () => {
+    const wideLine = renderStartupScreen(TWO_COL_WIDTH).split('\n')
+      .find(line => line.includes('██████╗   ██████╗'))
+    expect(wideLine).toContain('✦')
+    const narrowLines = renderStartupScreen(TWO_COL_WIDTH - 1).split('\n')
+    const narrowLine = narrowLines.find(line => line.includes('██████╗   ██████╗'))
+    expect(narrowLine).not.toContain('✦')
   })
 
-  test('provider box, tagline, and version line are centered', () => {
+  test('provider box, tagline, and version line are centered in the right half', () => {
     const out = renderStartupScreen(120)
     const lines = out.split('\n')
+    const colW = Math.floor((120 - 4) / 2)
+    const rightW = 120 - 4 - colW
 
-    // The logo letterforms also contain ╔ — the box's top border is the line
-    // that starts with it.
-    const boxTop = lines.find(line => line.trimStart().startsWith('╔'))
+    // Provider box top border sits at the start of the right half
+    const boxTop = lines.find(line => /╔═{10,}/.test(line))
     expect(boxTop).toBeDefined()
-    expect(boxTop!.indexOf('╔')).toBe(Math.floor((120 - BOX_WIDTH) / 2))
+    expect(boxTop!.lastIndexOf('╔')).toBe(colW + 4)
 
     const tagline = lines.find(line => line.includes('✦'))
     expect(tagline).toBeDefined()
+    // Tagline text (without the logo sharing its row): ✦ + text + ✦
+    const taglineLen = '✦ Orbit terminal for any LLM ✦'.length
+    expect(tagline!.lastIndexOf('✦')).toBe(
+      colW + 4 + Math.floor((rightW - taglineLen) / 2) + taglineLen - 1,
+    )
     expect(tagline!.indexOf('✦')).toBe(
-      Math.floor((120 - tagline!.trim().length) / 2),
+      colW + 4 + Math.floor((rightW - taglineLen) / 2),
     )
 
-    const version = lines.find(line => line.includes('openclaude v'))
+    const version = lines.find(line => line.includes('oc v'))
     expect(version).toBeDefined()
-    expect(version!.indexOf('openclaude')).toBe(
-      Math.floor((120 - version!.trim().length) / 2),
+    // Version text shares its row with the logo, so measure with the known
+    // text length instead of trim().
+    const versionLen = 'oc vtest-version'.length
+    expect(version!.lastIndexOf('oc')).toBe(
+      colW + 4 + Math.floor((rightW - versionLen) / 2),
     )
   })
 })

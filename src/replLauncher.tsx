@@ -16,7 +16,14 @@ export async function launchRepl(root: Root, appProps: AppWrapperProps, replProp
   const {
     REPL
   } = await import('./screens/REPL.js');
+  const {
+    StartupHeader
+  } = await import('./components/StartupHeader.js');
+  // Pinned brand header above the REPL. It is part of the Ink tree (unlike
+  // the pre-Ink splash) so ctrl+l's forceRedraw repaints it instead of
+  // erasing it.
   await renderAndRun(root, <App {...appProps}>
+      <StartupHeader />
       <REPL {...replProps} />
     </App>);
 }

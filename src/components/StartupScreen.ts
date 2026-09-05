@@ -1,5 +1,5 @@
 /**
- * OpenClaude startup screen — filled-block text logo with sunset gradient.
+ * Orbit Code startup screen — filled-block text logo with violet gradient.
  * Called once at CLI startup before the Ink UI renders.
  *
  * Addresses: https://github.com/eltonacosta/openclaude/issues/55
@@ -56,23 +56,24 @@ export function paintLine(text: string, stops: readonly RGB[], lineT: number): s
 
 // ─── Filled Block Text Logo ───────────────────────────────────────────────────
 
-// ANSI Shadow figlet letterforms, one space between letters.
-const LOGO_OPEN = [
-  ' \u2588\u2588\u2588\u2588\u2588\u2588\u2557  \u2588\u2588\u2588\u2588\u2588\u2588\u2557  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2557   \u2588\u2588\u2557',
-  '\u2588\u2588\u2554\u2550\u2550\u2550\u2588\u2588\u2557 \u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557 \u2588\u2588\u2554\u2550\u2550\u2550\u2550\u255d \u2588\u2588\u2588\u2588\u2557  \u2588\u2588\u2551',
-  '\u2588\u2588\u2551   \u2588\u2588\u2551 \u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255d \u2588\u2588\u2588\u2588\u2588\u2557   \u2588\u2588\u2554\u2588\u2588\u2557 \u2588\u2588\u2551',
-  '\u2588\u2588\u2551   \u2588\u2588\u2551 \u2588\u2588\u2554\u2550\u2550\u2550\u255d  \u2588\u2588\u2554\u2550\u2550\u255d   \u2588\u2588\u2551\u255a\u2588\u2588\u2557\u2588\u2588\u2551',
-  '\u255a\u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255d \u2588\u2588\u2551      \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2551 \u255a\u2588\u2588\u2588\u2588\u2551',
-  ' \u255a\u2550\u2550\u2550\u2550\u2550\u255d  \u255a\u2550\u255d      \u255a\u2550\u2550\u2550\u2550\u2550\u2550\u255d \u255a\u2550\u255d  \u255a\u2550\u2550\u2550\u255d',
+// ANSI Shadow figlet letterforms. Every row is padded to the block width so
+// the gradient block stays aligned. ORBIT is 49 wide, CODE is 43 wide.
+const LOGO_ORBIT = [
+  ' ██████╗   ██████╗    ██████╗    ██╗   ███████╗  ',
+  '██╔═══██╗  ██╔══██╗   ██╔══██╗   ██║   ╚══██╔══╝ ',
+  '██║   ██║  ██████╔╝   ██████╔╝   ██║      ██║    ',
+  '██║   ██║  ██╔══██╗   ██╔══██╗   ██║      ██║    ',
+  '╚██████╔╝  ██║  ██║   ██████╔╝   ██║      ██║    ',
+  ' ╚═════╝   ╚═╝  ╚═╝   ╚═════╝    ╚═╝      ╚═╝    ',
 ]
 
-const LOGO_CLAUDE = [
-  ' \u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2557       \u2588\u2588\u2588\u2588\u2588\u2557  \u2588\u2588\u2557   \u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2557  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557',
-  '\u2588\u2588\u2554\u2550\u2550\u2550\u2550\u255d \u2588\u2588\u2551      \u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557 \u2588\u2588\u2551   \u2588\u2588\u2551 \u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557 \u2588\u2588\u2554\u2550\u2550\u2550\u2550\u255d',
-  '\u2588\u2588\u2551      \u2588\u2588\u2551      \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551 \u2588\u2588\u2551   \u2588\u2588\u2551 \u2588\u2588\u2551  \u2588\u2588\u2551 \u2588\u2588\u2588\u2588\u2588\u2557  ',
-  '\u2588\u2588\u2551      \u2588\u2588\u2551      \u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2551 \u2588\u2588\u2551   \u2588\u2588\u2551 \u2588\u2588\u2551  \u2588\u2588\u2551 \u2588\u2588\u2554\u2550\u2550\u255d  ',
-  '\u255a\u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2551  \u2588\u2588\u2551 \u255a\u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255d \u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255d \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557',
-  ' \u255a\u2550\u2550\u2550\u2550\u2550\u255d \u255a\u2550\u2550\u2550\u2550\u2550\u2550\u255d \u255a\u2550\u255d  \u255a\u2550\u255d  \u255a\u2550\u2550\u2550\u2550\u2550\u255d  \u255a\u2550\u2550\u2550\u2550\u2550\u255d  \u255a\u2550\u2550\u2550\u2550\u2550\u2550\u255d',
+const LOGO_CODE = [
+  ' ██████╗     ██████╗   ██████╗    ███████╗ ',
+  '██╔════╝    ██╔═══██╗  ██╔══██╗   ██╔════╝ ',
+  '██║         ██║   ██║  ██║  ██║   █████╗   ',
+  '██║         ██║   ██║  ██║  ██║   ██╔══╝   ',
+  '╚██████╗    ╚██████╔╝  ██████╔╝   ███████╗ ',
+  ' ╚═════╝     ╚═════╝   ╚═════╝    ╚══════╝ ',
 ]
 
 // ─── Provider detection ───────────────────────────────────────────────────────
@@ -183,6 +184,10 @@ export function printStartupScreen(modelOverride?: string): void {
   // Skip in non-interactive / CI / print mode
   if (process.env.CI || !process.stdout.isTTY) return
 
+  // Full terminal reset so stale scrollback from the previous command does
+  // not linger above the header.
+  process.stdout.write('c')
+
   const palette = resolveLogoPalette(getGlobalConfig().logoColor)
   const ACCENT = palette.accent
   const CREAM = palette.cream
@@ -191,78 +196,113 @@ export function printStartupScreen(modelOverride?: string): void {
   const GRAD = palette.gradient
 
   const p = detectProvider(modelOverride)
-  const W = 62
   const columns = process.stdout.columns || 80
-  const centerPad = (visibleLen: number): string =>
-    ' '.repeat(Math.max(0, Math.floor((columns - visibleLen) / 2)))
   const out: string[] = []
 
-  out.push('')
+  // ── Two-column header ──────────────────────────────────────────────
+  // Left: gradient ORBIT + CODE figlet logo. Right: tagline, provider
+  // info box, and version. Each column takes half the available terminal
+  // width, with its content centered inside its own half. Falls back to
+  // a single stacked column when the terminal is too narrow.
+  const gap = 4
+  const MIN_COL = 30
+  const leftW = Math.max(...LOGO_ORBIT.map(row => row.length))
+  const stacked = columns < leftW + gap + MIN_COL
+  const colW = stacked ? columns : Math.floor((columns - gap) / 2)
+  const rightW = stacked ? columns : columns - gap - colW
+  // Center the two-column block as a unit; each column keeps 50% width.
+  const pad = stacked ? '' : ' '.repeat(Math.max(0, Math.floor((columns - (colW + gap + rightW)) / 2)))
 
-  // Gradient logo \u2014 OPEN and CLAUDE side by side on one centered row; falls
-  // back to the stacked two-block layout when the terminal is too narrow.
-  // Each block is centered as a unit (one pad per block) so rows stay aligned.
-  const open = LOGO_OPEN
-  const claude = LOGO_CLAUDE
-  const openWidth = Math.max(...open.map(row => row.length))
-  const claudeWidth = Math.max(...claude.map(row => row.length))
-  const oneRowWidth = openWidth + 2 + claudeWidth
-  const fitsOneRow = columns >= oneRowWidth
-  const logoLines = fitsOneRow
-    ? open.map((row, i) => ({
-        pad: centerPad(oneRowWidth),
-        text: `${row.padEnd(openWidth)}  ${claude[i]}`.trimEnd(),
-      }))
-    : [
-        ...open.map(row => ({ pad: centerPad(openWidth), text: row })),
-        { pad: '', text: '' },
-        ...claude.map(row => ({ pad: centerPad(claudeWidth), text: row.trimEnd() })),
-      ]
-  const total = logoLines.length
-  for (let i = 0; i < total; i++) {
-    const t = total > 1 ? i / (total - 1) : 0
-    if (logoLines[i].text === '') {
-      out.push('')
-    } else {
-      out.push(logoLines[i].pad + paintLine(logoLines[i].text, GRAD, t))
-    }
-  }
+  const centerIn = (visibleLen: number, width: number): string =>
+    ' '.repeat(Math.max(0, Math.floor((width - visibleLen) / 2)))
 
-  out.push('')
+  const orbitRows = LOGO_ORBIT
+  const codeRows = LOGO_CODE
+  const leftRows = [...orbitRows, '', ...codeRows]
 
-  // Tagline
-  out.push(`${centerPad(BRAND_TAGLINE.length + 4)}${ansiRgb(...ACCENT)}\u2726${RESET} ${ansiRgb(...CREAM)}${BRAND_TAGLINE}${RESET} ${ansiRgb(...ACCENT)}\u2726${RESET}`)
-  out.push('')
+  // Paint a visible row with the vertical gradient at position t (0 top).
+  const paintRow = (row: string, t: number): string =>
+    row === '' ? '' : paintLine(row, GRAD, t)
 
-  // Provider info box
-  const boxPad = centerPad(W)
-  out.push(`${boxPad}${ansiRgb(...BORDER)}\u2554${'\u2550'.repeat(W - 2)}\u2557${RESET}`)
+  const tagline = `${ansiRgb(...ACCENT)}✦${RESET} ${ansiRgb(...CREAM)}${BRAND_TAGLINE}${RESET} ${ansiRgb(...ACCENT)}✦${RESET}`
+  const taglinePad = ' '.repeat(Math.max(0, Math.floor((rightW - (BRAND_TAGLINE.length + 4)) / 2)))
 
   const lbl = (k: string, v: string, c: RGB = CREAM): [string, number] => {
     const padK = k.padEnd(9)
     return [` ${DIM}${ansiRgb(...DIMCOL)}${padK}${RESET} ${ansiRgb(...c)}${v}${RESET}`, ` ${padK} ${v}`.length]
   }
 
+  const rightTop = `${ansiRgb(...BORDER)}╔${'═'.repeat(rightW - 2)}╗${RESET}`
   const provC: RGB = p.isLocal ? [130, 175, 130] : ACCENT
-  let [r, l] = lbl('Provider', p.name, provC)
-  out.push(boxPad + boxRow(r, W, l, BORDER))
-  ;[r, l] = lbl('Model', p.model)
-  out.push(boxPad + boxRow(r, W, l, BORDER))
-  const ep = p.baseUrl.length > 38 ? p.baseUrl.slice(0, 35) + '...' : p.baseUrl
-  ;[r, l] = lbl('Endpoint', ep)
-  out.push(boxPad + boxRow(r, W, l, BORDER))
-
-  out.push(`${boxPad}${ansiRgb(...BORDER)}\u2560${'\u2550'.repeat(W - 2)}\u2563${RESET}`)
-
+  const [pr, pl] = lbl('Provider', p.name, provC)
+  const [mr, ml] = lbl('Model', p.model)
+  const maxEp = Math.max(10, rightW - 16)
+  const ep = p.baseUrl.length > maxEp ? p.baseUrl.slice(0, maxEp - 3) + '...' : p.baseUrl
+  const [er, el] = lbl('Endpoint', ep)
+  const rightMid = `${ansiRgb(...BORDER)}╠${'═'.repeat(rightW - 2)}╣${RESET}`
   const sC: RGB = p.isLocal ? [130, 175, 130] : ACCENT
   const sL = p.isLocal ? 'local' : 'cloud'
-  const sRow = ` ${ansiRgb(...sC)}\u25cf${RESET} ${DIM}${ansiRgb(...DIMCOL)}${sL}${RESET}    ${DIM}${ansiRgb(...DIMCOL)}Ready \u2014 type ${RESET}${ansiRgb(...ACCENT)}/help${RESET}${DIM}${ansiRgb(...DIMCOL)} to begin${RESET}`
-  const sLen = ` \u25cf ${sL}    Ready \u2014 type /help to begin`.length
-  out.push(boxPad + boxRow(sRow, W, sLen, BORDER))
+  const sRow = ` ${ansiRgb(...sC)}●${RESET} ${DIM}${ansiRgb(...DIMCOL)}${sL}${RESET}    ${DIM}${ansiRgb(...DIMCOL)}Ready — type ${RESET}${ansiRgb(...ACCENT)}/help${RESET}${DIM}${ansiRgb(...DIMCOL)} to begin${RESET}`
+  const sLen = ` ● ${sL}    Ready — type /help to begin`.length
+  const rightBot = `${ansiRgb(...BORDER)}╚${'═'.repeat(rightW - 2)}╝${RESET}`
+  const versionText = `oc v${MACRO.DISPLAY_VERSION ?? MACRO.VERSION}`
+  const versionRow = `${' '.repeat(Math.max(0, Math.floor((rightW - versionText.length) / 2)))}${DIM}${ansiRgb(...DIMCOL)}oc ${RESET}${ansiRgb(...ACCENT)}v${MACRO.DISPLAY_VERSION ?? MACRO.VERSION}${RESET}`
 
-  out.push(`${boxPad}${ansiRgb(...BORDER)}\u255a${'\u2550'.repeat(W - 2)}\u255d${RESET}`)
-  const versionText = `openclaude v${MACRO.DISPLAY_VERSION ?? MACRO.VERSION}`
-  out.push(`${centerPad(versionText.length)}${DIM}${ansiRgb(...DIMCOL)}openclaude ${RESET}${ansiRgb(...ACCENT)}v${MACRO.DISPLAY_VERSION ?? MACRO.VERSION}${RESET}`)
+  out.push('')
+
+  // Left column rows are centered inside their own half; the gradient runs
+  // top→bottom across the whole logo block (ORBIT then CODE). leftPainted
+  // already includes the leading pad, so the cell only appends trailing fill.
+  const leftCount = leftRows.filter(row => row !== '').length
+  let seen = 0
+  const leftPainted = leftRows.map(row => {
+    if (row === '') return ''
+    const t = leftCount > 1 ? seen / (leftCount - 1) : 0
+    seen++
+    const fill = ' '.repeat(Math.max(0, colW - centerIn(row.length, colW).length - row.length))
+    return `${centerIn(row.length, colW)}${paintRow(row, t)}${fill}`
+  })
+
+  if (stacked) {
+    out.push(...leftPainted)
+    out.push('')
+    out.push(`${taglinePad}${tagline}`)
+    out.push('')
+    out.push(rightTop)
+    out.push(boxRow(pr, rightW, pl, BORDER))
+    out.push(boxRow(mr, rightW, ml, BORDER))
+    out.push(boxRow(er, rightW, el, BORDER))
+    out.push(rightMid)
+    out.push(boxRow(sRow, rightW, sLen, BORDER))
+    out.push(rightBot)
+    out.push(versionRow)
+  } else {
+    const rightRows = [
+      `${taglinePad}${tagline}`,
+      '',
+      rightTop,
+      boxRow(pr, rightW, pl, BORDER),
+      boxRow(mr, rightW, ml, BORDER),
+      boxRow(er, rightW, el, BORDER),
+      rightMid,
+      boxRow(sRow, rightW, sLen, BORDER),
+      rightBot,
+      versionRow,
+    ]
+    const height = Math.max(leftPainted.length, rightRows.length)
+    // Vertically center the shorter column so the logo sits mid-height
+    // against the taller info column.
+    const leftTopPad = Math.floor((height - leftPainted.length) / 2)
+    for (let i = 0; i < height; i++) {
+      const li = i - leftTopPad
+      const leftCell = li >= 0 && li < leftPainted.length && leftPainted[li] !== ''
+        ? leftPainted[li]!
+        : ' '.repeat(colW)
+      const right = i < rightRows.length ? rightRows[i] : ''
+      out.push(`${pad}${leftCell}${' '.repeat(gap)}${right}`)
+    }
+  }
+
   out.push('')
 
   process.stdout.write(out.join('\n') + '\n')
