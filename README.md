@@ -11,18 +11,12 @@ Este repositório é um fork com integração ao **Orbit Router** (roteamento in
 
 ## Instalação
 
-### Via npm (a partir do git — 1 comando)
+### Via artifact do GitHub (1 comando)
+
+O CI gera o pacote instalável `.tgz` (workflow **Package artifact**), validado em Linux/macOS/Windows. Baixe o `openclaude-<versão>.tgz` na aba **Actions** do repositório e instale:
 
 ```bash
-npm install -g github:eltonacosta/openclaude
-```
-
-O npm clona o repositório, instala as dependências e roda o `prepare` (build automático). O binário `openclaude` fica globalmente disponível.
-
-### Via npm (registry oficial)
-
-```bash
-npm install -g @eltonacosta/openclaude@latest
+npm install -g openclaude-<versão>.tgz
 ```
 
 ### Via fonte (desenvolvimento)

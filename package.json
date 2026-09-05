@@ -18,7 +18,6 @@
     "bin/",
     "dist/cli.mjs",
     "dist/sdk.mjs",
-    "scripts/install-prepare.mjs",
     "src/entrypoints/sdk.d.ts",
     "src/entrypoints/sdk/coreTypes.generated.ts",
     "scripts/windows/openclaude-aliases.ps1",
@@ -77,7 +76,6 @@
     "doctor:report": "bun run scripts/system-check.ts --out reports/doctor-runtime.json",
     "hardening:check": "bun run smoke && bun run doctor:runtime",
     "hardening:strict": "bun run typecheck && bun run hardening:check",
-    "prepare": "node scripts/install-prepare.mjs",
     "prepack": "npm run build"
   },
   "dependencies": {
