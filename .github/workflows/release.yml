@@ -78,7 +78,6 @@ jobs:
     environment: release
     permissions:
       contents: read
-      id-token: write
     steps:
       - name: Checkout release tag
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -91,6 +90,8 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+          scope: '@eltonacosta'
+          token: ${{ secrets.NPM_TOKEN }}
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -116,13 +117,8 @@ jobs:
       - name: Verify zero-warning global install
         run: bun run install:verify
 
-      - name: Clear token auth for trusted publishing
-        run: |
-          unset NODE_AUTH_TOKEN
-          echo "NODE_AUTH_TOKEN=" >> "$GITHUB_ENV"
-
       - name: Publish to npm
-        run: npm publish --access public --provenance
+        run: npm publish --access public
 
       - name: Verify npm latest dist-tag
         env:
