@@ -149,7 +149,14 @@ export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
   } else {
     const settings = getSettings_DEPRECATED() || {}
     const setting = normalizeModelSetting(settings.model)
-    const hasRegistryModels = ModelRegistry.hasModels()
+    const provider = getAPIProvider()
+    const activeRouteId = resolveActiveRouteIdFromEnv(process.env)
+    const activeBaseUrl = process.env.OPENAI_BASE_URL?.trim().replace(/\/+$/, '')
+    const cachedBaseUrl = ModelRegistry.getCachedApiUrl()?.trim().replace(/\/+$/, '')
+    const hasRegistryModels =
+      ModelRegistry.hasModels() &&
+      activeBaseUrl !== undefined &&
+      activeBaseUrl === cachedBaseUrl
     const registryModel = hasRegistryModels
       ? ModelRegistry.getModel(setting ?? '')?.id
       : undefined
@@ -164,8 +171,6 @@ export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
     // openai/github — codex/nvidia-nim/minimax fell through to the stale
     // settings.model, so switching from (say) Moonshot to Codex kept firing
     // `kimi-k2.6` at the Codex endpoint and getting 400s.
-    const provider = getAPIProvider()
-    const activeRouteId = resolveActiveRouteIdFromEnv(process.env)
     const isOpenAIShimProvider =
       provider === 'openai' ||
       provider === 'codex' ||

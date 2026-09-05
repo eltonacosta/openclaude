@@ -42,7 +42,7 @@ describe('discovery command', () => {
             'big-pickle': {
               id: 'big-pickle',
               name: 'Big Pickle',
-              limit: { context: 1000000 },
+              limit: { context: 128000 },
               reasoning: true,
               tool_call: true,
             },
@@ -52,7 +52,7 @@ describe('discovery command', () => {
       }
       return new Response(
         JSON.stringify({
-          data: [{ id: 'oc/big-pickle' }],
+          data: [{ id: 'oc/big-pickle', context_window: 1000000 }],
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       )

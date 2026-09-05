@@ -7,6 +7,10 @@ export const FALLBACK_MODELS_DEV_API_URL = 'https://models.dev/api.json'
 export interface RouterRawModel {
   id: string
   context_window?: number
+  context_length?: number
+  max_context_length?: number
+  max_model_len?: number
+  max_input_tokens?: number
   supports_efforts?: boolean
   supports_tools?: boolean
   description?: string
@@ -14,11 +18,8 @@ export interface RouterRawModel {
 }
 
 export interface DevModelInfo {
-  context_limit?: number
   supports_reasoning?: boolean
-  supports_tools?: boolean
   name?: string
-  description?: string
 }
 
 export type FetchLike = (
@@ -111,13 +112,11 @@ export function indexDevModelsCatalog(catalogData: Record<string, unknown>): Rec
       for (const [modelKey, modelVal] of Object.entries(providerModels)) {
         if (!modelVal || typeof modelVal !== 'object') continue
         const m = modelVal as Record<string, unknown>
-        const limit = m.limit as { context?: number } | undefined
         const info: DevModelInfo = {
-          context_limit: limit?.context ?? (m.context_limit as number | undefined),
-          supports_reasoning: (m.reasoning as boolean | undefined) ?? (m.supports_reasoning as boolean | undefined),
-          supports_tools: (m.tool_call as boolean | undefined) ?? (m.supports_tools as boolean | undefined),
+          supports_reasoning:
+            (m.reasoning as boolean | undefined) ??
+            (m.supports_reasoning as boolean | undefined),
           name: m.name as string | undefined,
-          description: m.description as string | undefined,
         }
 
         registerModelInIndex(index, modelKey, m.id as string | undefined, info)
@@ -125,13 +124,11 @@ export function indexDevModelsCatalog(catalogData: Record<string, unknown>): Rec
     } else {
       // Handle models.dev/models.json structure (direct dictionary of models)
       const m = val as Record<string, unknown>
-      const limit = m.limit as { context?: number } | undefined
       const info: DevModelInfo = {
-        context_limit: limit?.context ?? (m.context_limit as number | undefined),
-        supports_reasoning: (m.reasoning as boolean | undefined) ?? (m.supports_reasoning as boolean | undefined),
-        supports_tools: (m.tool_call as boolean | undefined) ?? (m.supports_tools as boolean | undefined),
+        supports_reasoning:
+          (m.reasoning as boolean | undefined) ??
+          (m.supports_reasoning as boolean | undefined),
         name: m.name as string | undefined,
-        description: m.description as string | undefined,
       }
 
       registerModelInIndex(index, key, m.id as string | undefined, info)
@@ -204,7 +201,7 @@ function findDevModelInfo(
 }
 
 /**
- * Downloads and indexes the models.dev reference catalog.
+ * Downloads and indexes models.dev reasoning metadata.
  * Uses https://models.dev/models.json primarily (~297KB), falling back to api.json if needed.
  */
 export async function fetchDevModelsCatalog(
@@ -241,10 +238,39 @@ export async function fetchDevModelsCatalog(
 }
 
 /**
+ * Resolves the router-advertised context window from the raw gateway payload.
+ * Gateways use different keys for the same value, so every known alias is
+ * checked in OpenAI-compatibility order. Falls back to 4096 when the gateway
+ * omits it or sends a non-positive/non-finite value — persisting a 0/null
+ * would shrink the registry window to zero and make auto-compact fire on
+ * every turn.
+ */
+function firstPositiveWindowValue(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return value
+    }
+  }
+  return undefined
+}
+
+function resolveRouterContextWindow(model: RouterRawModel): number {
+  return (
+    firstPositiveWindowValue(
+      model.context_length,
+      model.max_context_length,
+      model.context_window,
+      model.max_model_len,
+      model.max_input_tokens,
+    ) ?? 4096
+  )
+}
+
+/**
  * Executes the full discovery and enrichment pipeline:
- * 1. Fetches models from Orbit Router (`/v1/models`). Only these models are available for use.
- * 2. Fetches metadata catalog from models.dev (models.json).
- * 3. Maps and enriches each router model.
+ * 1. Fetches models and runtime metadata from Orbit Router (`/v1/models`).
+ * 2. Fetches reasoning support from models.dev.
+ * 3. Maps exclusively the router models, enriching only effort support.
  * 4. Updates ModelRegistry in memory.
  */
 export async function runDiscovery(
@@ -259,7 +285,7 @@ export async function runDiscovery(
   // 1. Fetch available models from Orbit Router
   const routerModels = await fetchRouterModels(apiUrl, apiKey, fetchFn)
 
-  // 2. Fetch metadata reference catalog
+  // 2. Fetch reasoning metadata
   let devModelsCatalog: Record<string, DevModelInfo> = {}
   try {
     devModelsCatalog = await fetchDevModelsCatalog(fetchFn)
@@ -267,25 +293,23 @@ export async function runDiscovery(
     devModelsCatalog = {}
   }
 
-  // 3. Process and enrich exclusively the models from Orbit Router
+  // 3. Process exclusively the models from Orbit Router
   const updatedModelsList: OrbitModel[] = routerModels.map(model => {
     const fullId = model.id
     const parsedName = fullId.split('/').pop() || fullId
 
-    // Match exact IDs first, then enrich router variants from the longest
-    // models.dev name contained in the router model name.
-    const matchedDevModel = findDevModelInfo(fullId, devModelsCatalog) ?? {}
+    // Match exact IDs first, then identify router variants by the longest
+    // models.dev name. Only effort support is imported from models.dev.
+    const matchedDevModel = findDevModelInfo(fullId, devModelsCatalog)
 
     return {
       id: fullId, // Used in API inference requests
       displayName: parsedName,
-      context_window:
-        matchedDevModel.context_limit || model.context_window || 4096,
+      context_window: resolveRouterContextWindow(model),
       supports_efforts:
-        matchedDevModel.supports_reasoning ?? model.supports_efforts ?? false,
-      supports_tools:
-        matchedDevModel.supports_tools ?? model.supports_tools ?? true,
-      description: matchedDevModel.description ?? model.description,
+        matchedDevModel?.supports_reasoning ?? model.supports_efforts ?? false,
+      supports_tools: model.supports_tools ?? true,
+      description: model.description,
       raw: model,
     }
   })

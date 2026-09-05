@@ -1,7 +1,7 @@
 # Auto Release: on every push to main, if package.json.version advanced to a
-# version that has no tag yet, build + validate the installable .tgz on all
-# supported OS, and only then create the unique monotonic vX.Y.Z tag and
-# publish a GitHub Release with the .tgz attached as a durable asset.
+# version that has no tag yet, build the installable .tgz, and only then create
+# the unique monotonic vX.Y.Z tag and publish a GitHub Release with the .tgz
+# attached as a durable asset.
 #
 # No npm publishing, no Docker: GitHub Releases is the single distribution
 # point for the installable .tgz artifact.
@@ -80,11 +80,10 @@ jobs:
           echo "should_release=true" >> "$GITHUB_OUTPUT"
           echo "::notice::New release detected: ${TAG} (current latest: ${LATEST:-none})"
 
-  # Builds the .tgz and verifies it installs cleanly on Linux / macOS / Windows
-  # × Node 22 / 24 (package-artifact.yml, invoked here). No tag exists yet —
+  # Builds the .tgz (package-artifact.yml, invoked here). No tag exists yet —
   # the whole run releases nothing until every check passes.
   artifact:
-    name: Build & verify .tgz (all OS)
+    name: Build .tgz
     needs: detect
     if: ${{ needs.detect.outputs.should_release == 'true' }}
     uses: ./.github/workflows/package-artifact.yml
@@ -114,7 +113,7 @@ jobs:
           # gh release create also creates the lightweight tag (pointing at the
           # pushed commit) when it does not exist yet.
           NOTES="Installable artifact: \`npm install -g ${TGZ}\` (asset below).
-          Built and verified on Linux/macOS/Windows × Node 22/24 by CI."
+          Built on Linux by CI."
           gh release create "${TAG}" "${TGZ}" \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \

@@ -14,7 +14,7 @@ describe('orbitDiscovery', () => {
     ModelRegistry.clear()
   })
 
-  it('indexes devModelsCatalog for both models.json and api.json schemas', () => {
+  it('indexes effort metadata from both models.json and api.json schemas', () => {
     const modelsJsonSample = {
       'swiss-ai/apertus-8b': {
         id: 'swiss-ai/apertus-8b',
@@ -34,13 +34,10 @@ describe('orbitDiscovery', () => {
 
     const index = indexDevModelsCatalog(modelsJsonSample)
 
-    // Match by parsed base name
-    expect(index['apertus-8b']?.context_limit).toBe(65536)
     expect(index['apertus-8b']?.supports_reasoning).toBe(false)
-    expect(index['apertus-8b']?.supports_tools).toBe(true)
-
-    // Match by full id
-    expect(index['meituan/longcat-2.0']?.context_limit).toBe(1000000)
+    expect(index['apertus-8b']).not.toHaveProperty('context_limit')
+    expect(index['apertus-8b']).not.toHaveProperty('supports_tools')
+    expect(index['meituan/longcat-2.0']?.supports_reasoning).toBe(true)
     expect(index['longcat-2.0']?.supports_reasoning).toBe(true)
   })
 
@@ -76,7 +73,7 @@ describe('orbitDiscovery', () => {
     expect(models[0]?.id).toBe('oc/big-pickle')
   })
 
-  it('enriches router variants using the longest contained models.dev model name', async () => {
+  it('matches router variants to the longest models.dev effort entry', async () => {
     const mockFetch: FetchLike = async (input) => {
       const url = String(input)
       const payload = url.includes('models.dev')
@@ -84,7 +81,7 @@ describe('orbitDiscovery', () => {
             'gemini-3.8-flash': {
               id: 'gemini-3.8-flash',
               reasoning: true,
-              tool_call: true,
+              tool_call: false,
               limit: { context: 131072 },
             },
             flash: {
@@ -93,7 +90,15 @@ describe('orbitDiscovery', () => {
               limit: { context: 4096 },
             },
           }
-        : { data: [{ id: 'agy/gemini-3.8-flash-high' }] }
+        : {
+            data: [
+              {
+                id: 'agy/gemini-3.8-flash-high',
+                context_window: 1000000,
+                supports_tools: true,
+              },
+            ],
+          }
 
       return new Response(JSON.stringify(payload), {
         status: 200,
@@ -108,7 +113,7 @@ describe('orbitDiscovery', () => {
     )
 
     expect(result[0]?.id).toBe('agy/gemini-3.8-flash-high')
-    expect(result[0]?.context_window).toBe(131072)
+    expect(result[0]?.context_window).toBe(1000000)
     expect(result[0]?.supports_efforts).toBe(true)
     expect(result[0]?.supports_tools).toBe(true)
   })
@@ -126,7 +131,16 @@ describe('orbitDiscovery', () => {
               limit: { context: 1048576 },
             },
           }
-        : { data: [{ id: 'ag/gemini-3.8-flash-high' }] }
+        : {
+            data: [
+              {
+                id: 'ag/gemini-3.8-flash-high',
+                context_window: 1000000,
+                supports_tools: false,
+                description: 'Router deployment metadata',
+              },
+            ],
+          }
 
       return new Response(JSON.stringify(payload), {
         status: 200,
@@ -144,16 +158,64 @@ describe('orbitDiscovery', () => {
     expect(result[0]).toMatchObject({
       id: 'ag/gemini-3.8-flash-high',
       displayName: 'gemini-3.8-flash-high',
-      context_window: 1048576,
+      context_window: 1000000,
       supports_efforts: true,
-      supports_tools: true,
+      supports_tools: false,
+      description: 'Router deployment metadata',
     })
     expect(ModelRegistry.getModels()[0]?.id).toBe('ag/gemini-3.8-flash-high')
   })
+  it('uses models.dev only for effort support', async () => {
+    const mockFetch: FetchLike = async input => {
+      const url = String(input)
+      const payload = url.includes('models.dev')
+        ? {
+            'gpt-5.6-sol': {
+              id: 'gpt-5.6-sol',
+              reasoning: true,
+              tool_call: true,
+              limit: { context: 128000 },
+            },
+          }
+        : {
+            data: [
+              {
+                id: 'cx/gpt-5.6-sol',
+                context_window: 1000000,
+                supports_tools: false,
+                description: 'Router deployment metadata',
+              },
+            ],
+          }
+
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const result = await runDiscovery(
+      'https://ai.servhub.xyz/v1',
+      'sk-test',
+      { fetchFn: mockFetch },
+    )
+
+    expect(result[0]).toMatchObject({
+      id: 'cx/gpt-5.6-sol',
+      context_window: 1000000,
+      supports_efforts: true,
+      supports_tools: false,
+      description: 'Router deployment metadata',
+    })
+    expect(
+      ModelRegistry.getModel('cx/gpt-5.6-sol')?.context_window,
+    ).toBe(1000000)
+  })
+
   it('runs discovery, enriches exclusively router models, and updates ModelRegistry', async () => {
     const mockRouterResponse = {
       data: [
-        { id: 'oc/big-pickle' },
+        { id: 'oc/big-pickle', context_window: 256000 },
         { id: 'oc/unregistered-model', context_window: 8192 },
       ],
     }
@@ -199,7 +261,7 @@ describe('orbitDiscovery', () => {
     const bigPickle = result.find(m => m.id === 'oc/big-pickle')
     expect(bigPickle).toBeDefined()
     expect(bigPickle?.displayName).toBe('big-pickle')
-    expect(bigPickle?.context_window).toBe(128000)
+    expect(bigPickle?.context_window).toBe(256000)
     expect(bigPickle?.supports_efforts).toBe(true)
     expect(bigPickle?.supports_tools).toBe(true)
 
@@ -216,6 +278,73 @@ describe('orbitDiscovery', () => {
 
     // Verify ModelRegistry in-memory state
     expect(ModelRegistry.hasModels()).toBe(true)
-    expect(ModelRegistry.getModel('oc/big-pickle')?.context_window).toBe(128000)
+    expect(ModelRegistry.getModel('oc/big-pickle')?.context_window).toBe(256000)
+  })
+
+  it('reads the router context from OpenAI-compatible aliases and beats models.dev', async () => {
+    const mockFetch: FetchLike = async input => {
+      const url = String(input)
+      const payload = url.includes('models.dev')
+        ? {
+            'gpt-5.6-sol': {
+              id: 'openai/gpt-5.6-sol',
+              reasoning: true,
+              tool_call: true,
+              limit: { context: 1050000 },
+            },
+          }
+        : {
+            data: [
+              { id: 'cx/gpt-5.6-sol', context_length: 400000 },
+            ],
+          }
+
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const result = await runDiscovery(
+      'https://ai.servhub.xyz/v1',
+      'sk-test',
+      { fetchFn: mockFetch },
+    )
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.context_window).toBe(400000)
+    expect(result[0]?.supports_efforts).toBe(true)
+    expect(ModelRegistry.getModel('cx/gpt-5.6-sol')?.context_window).toBe(400000)
+  })
+
+  it('falls back to 4096 when the router omits or zeroes context_window', async () => {
+    const mockFetch: FetchLike = async input => {
+      const url = String(input)
+      const payload = url.includes('models.dev')
+        ? {}
+        : {
+            data: [
+              { id: 'oc/zero-window', context_window: 0 },
+              { id: 'oc/no-window' },
+            ],
+          }
+
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const result = await runDiscovery(
+      'https://ai.servhub.xyz/v1',
+      'sk-test',
+      { fetchFn: mockFetch },
+    )
+
+    expect(result).toHaveLength(2)
+    expect(result[0]?.context_window).toBe(4096)
+    expect(result[1]?.context_window).toBe(4096)
+    expect(result[0]?.supports_efforts).toBe(false)
+    expect(ModelRegistry.getModel('oc/zero-window')?.context_window).toBe(4096)
   })
 })

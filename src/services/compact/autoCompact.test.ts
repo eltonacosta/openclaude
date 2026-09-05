@@ -13,6 +13,8 @@ import {
 } from '../../test/sharedMutationLock.js'
 import type { Message } from '../../types/message.js'
 import * as realConfig from '../../utils/config.js'
+import { ModelRegistry } from '../../utils/model/modelRegistry.js'
+import { setModelRegistryCachePathOverrideForTesting } from '../../utils/model/modelRegistryCache.js'
 
 const realContext = await import(
   `../../utils/context.js?real=${Date.now()}-${Math.random()}`
@@ -266,6 +268,32 @@ describe('getEffectiveContextWindowSize', () => {
       )
     } finally {
       restoreEnv()
+    }
+  })
+
+  test('uses the discovered router context window for prefixed models', async () => {
+    const { getAutoCompactThreshold, getEffectiveContextWindowSize } =
+      await importAutoCompact()
+    process.env.CLAUDE_CODE_USE_OPENAI = '1'
+    process.env.OPENAI_BASE_URL = 'https://router.example.test/v1'
+    process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS = '20000'
+    setModelRegistryCachePathOverrideForTesting('/nonexistent/cache/path.json')
+    ModelRegistry.updateModels([
+      {
+        id: 'cx/gpt-5.6-sol',
+        displayName: 'gpt-5.6-sol',
+        context_window: 1_000_000,
+        supports_efforts: true,
+        supports_tools: true,
+      },
+    ])
+
+    try {
+      expect(getEffectiveContextWindowSize('cx/gpt-5.6-sol')).toBe(980_000)
+      expect(getAutoCompactThreshold('cx/gpt-5.6-sol')).toBe(950_000)
+    } finally {
+      ModelRegistry.clear()
+      setModelRegistryCachePathOverrideForTesting(undefined)
     }
   })
 
