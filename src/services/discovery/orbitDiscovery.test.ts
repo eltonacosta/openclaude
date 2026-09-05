@@ -1,7 +1,8 @@
-import { describe, expect, it, beforeEach } from 'bun:test'
+import { describe, expect, it, afterEach, beforeEach } from 'bun:test'
 import { ModelRegistry } from '../../utils/model/modelRegistry.js'
 import { setModelRegistryCachePathOverrideForTesting } from '../../utils/model/modelRegistryCache.js'
 import {
+  extractDevEffortLevels,
   fetchRouterModels,
   indexDevModelsCatalog,
   runDiscovery,
@@ -12,6 +13,11 @@ describe('orbitDiscovery', () => {
   beforeEach(() => {
     setModelRegistryCachePathOverrideForTesting('/nonexistent/cache/path.json')
     ModelRegistry.clear()
+  })
+
+  afterEach(() => {
+    ModelRegistry.clear()
+    setModelRegistryCachePathOverrideForTesting(undefined)
   })
 
   it('indexes effort metadata from both models.json and api.json schemas', () => {
@@ -317,6 +323,46 @@ describe('orbitDiscovery', () => {
     expect(ModelRegistry.getModel('cx/gpt-5.6-sol')?.context_window).toBe(400000)
   })
 
+  it('reads effort support from router capabilities before models.dev', async () => {
+    const mockFetch: FetchLike = async input => {
+      const url = String(input)
+      const payload = url.includes('models.dev')
+        ? {
+            'deepseek-4-flash': {
+              id: 'deepseek/deepseek-4-flash',
+              reasoning: false,
+              tool_call: true,
+              limit: { context: 128000 },
+            },
+          }
+        : {
+            data: [
+              {
+                id: 'do/deepseek-4-flash',
+                context_length: 128000,
+                capabilities: { reasoning: true, tools: true },
+              },
+            ],
+          }
+
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const result = await runDiscovery(
+      'https://ai.servhub.xyz/v1',
+      'sk-test',
+      { fetchFn: mockFetch },
+    )
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.supports_efforts).toBe(true)
+    expect(result[0]?.supports_tools).toBe(true)
+    expect(ModelRegistry.getModel('do/deepseek-4-flash')?.supports_efforts).toBe(true)
+  })
+
   it('falls back to 4096 when the router omits or zeroes context_window', async () => {
     const mockFetch: FetchLike = async input => {
       const url = String(input)
@@ -346,5 +392,56 @@ describe('orbitDiscovery', () => {
     expect(result[1]?.context_window).toBe(4096)
     expect(result[0]?.supports_efforts).toBe(false)
     expect(ModelRegistry.getModel('oc/zero-window')?.context_window).toBe(4096)
+  })
+
+  it('extracts configurable effort levels from reasoning_options', () => {
+    expect(
+      extractDevEffortLevels({
+        reasoning: true,
+        reasoning_options: [{ type: 'effort', values: ['none', 'low', 'medium', 'high', 'xhigh', 'max'] }],
+      }),
+    ).toEqual(['none', 'low', 'medium', 'high', 'xhigh', 'max'])
+    expect(extractDevEffortLevels({ reasoning: true })).toEqual([])
+    expect(extractDevEffortLevels(undefined)).toEqual([])
+  })
+
+  it('prefers the canonical provider entry when the router prefix differs', async () => {
+    const mockFetch: FetchLike = async input => {
+      const url = String(input)
+      const payload = url.includes('models.dev')
+        ? {
+            openai: {
+              models: {
+                'gpt-5.6-sol': {
+                  id: 'gpt-5.6-sol',
+                  reasoning: true,
+                  reasoning_options: [{ type: 'effort', values: ['low', 'medium', 'high'] }],
+                  limit: { context: 1050000 },
+                },
+              },
+            },
+          }
+        : {
+            data: [
+              { id: 'cx/gpt-5.6-sol', context_length: 400000 },
+            ],
+          }
+
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const result = await runDiscovery(
+      'https://ai.servhub.xyz/v1',
+      'sk-test',
+      { fetchFn: mockFetch },
+    )
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.supports_efforts).toBe(true)
+    expect(result[0]?.effort_levels).toEqual(['low', 'medium', 'high'])
+    expect(ModelRegistry.getModel('cx/gpt-5.6-sol')?.effort_levels).toEqual(['low', 'medium', 'high'])
   })
 })

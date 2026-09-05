@@ -35,7 +35,7 @@ export function setOrbitConfigPathOverrideForTesting(
 /**
  * Resolves the configuration file path.
  * Prefers `./config.json` in the current working directory if it exists,
- * otherwise defaults to `~/.openclaude/config.json`.
+ * otherwise defaults to `~/.orbitcode/config.json`.
  */
 export function getOrbitConfigPath(): string {
   if (orbitConfigPathOverride !== undefined) {

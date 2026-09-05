@@ -877,7 +877,7 @@ function isProcessEnvAlignedWithProfile(
  * distinct from `undefined`. Without it, clearing the active id falls through
  * to `profiles[0]` (see below), so a user with any saved third-party profile
  * could never return to Anthropic from `/provider` without hand-editing
- * `~/.openclaude.json` and restarting (#1426). Storing the sentinel preserves
+ * `~/.orbitcode.json` and restarting (#1426). Storing the sentinel preserves
  * the saved profiles for re-selection while expressing "no third-party active".
  */
 export const ANTHROPIC_DEFAULT_PROFILE_ID = '__anthropic_default__'

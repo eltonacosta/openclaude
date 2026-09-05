@@ -24,7 +24,7 @@ const DYNAMIC_MAX_DELAY = '1 hour'
 const MAINTENANCE_PROMPT = `Scheduled maintenance loop iteration.
 
 If .openclaude/loop.md exists, read it and follow it.
-Otherwise, if ~/.openclaude/loop.md exists, read it and follow it.
+Otherwise, if ~/.orbitcode/loop.md exists, read it and follow it.
 Otherwise:
 - continue any unfinished work from the conversation
 - tend to the current branch's pull request: review comments, failed CI runs, merge conflicts
@@ -162,7 +162,7 @@ ${parsed.prompt}
 
 Determine the effective prompt in this order:
 1. If .openclaude/loop.md exists, read it and use it.
-2. Otherwise, if ~/.openclaude/loop.md exists, read it and use it.
+2. Otherwise, if ~/.orbitcode/loop.md exists, read it and use it.
 3. Otherwise, use this built-in maintenance prompt:
 
 --- BEGIN MAINTENANCE PROMPT ---

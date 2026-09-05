@@ -328,7 +328,7 @@ export const DeniedMcpServerEntrySchema = lazySchema(() =>
  *
  * ⚠️ BACKWARD COMPATIBILITY NOTICE ⚠️
  *
- * This schema defines the structure of user settings files (~/.openclaude/settings.json).
+ * This schema defines the structure of user settings files (~/.orbitcode/settings.json).
  * We support backward-compatible changes! Here's how:
  *
  * ✅ ALLOWED CHANGES:
@@ -1101,7 +1101,7 @@ export const SettingsSchema = lazySchema(() =>
         .optional()
         .describe(
           'Custom directory for plan files, relative to project root. ' +
-            'If not set, defaults to ~/.openclaude/plans/',
+            'If not set, defaults to ~/.orbitcode/plans/',
         ),
       ...(process.env.USER_TYPE === 'ant'
         ? {
@@ -1264,7 +1264,7 @@ export const SettingsSchema = lazySchema(() =>
         .string()
         .optional()
         .describe(
-          'Custom directory path for auto-memory storage. Supports ~/ prefix for home directory expansion. Ignored if set in projectSettings (checked-in .openclaude/settings.json) for security. When unset, defaults to ~/.openclaude/projects/<sanitized-cwd>/memory/.',
+          'Custom directory path for auto-memory storage. Supports ~/ prefix for home directory expansion. Ignored if set in projectSettings (checked-in .openclaude/settings.json) for security. When unset, defaults to ~/.orbitcode/projects/<sanitized-cwd>/memory/.',
         ),
       autoDreamEnabled: z
         .boolean()

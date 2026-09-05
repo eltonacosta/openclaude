@@ -9,7 +9,7 @@ import { getCwd } from '../../utils/cwd.js'
 import { findCanonicalGitRoot } from '../../utils/git.js'
 import { sanitizePath } from '../../utils/path.js'
 
-// Persistent agent memory scope: 'user' (~/.openclaude/agent-memory/), 'project' (.openclaude/agent-memory/), or 'local' (.openclaude/agent-memory-local/)
+// Persistent agent memory scope: 'user' (~/.orbitcode/agent-memory/), 'project' (.openclaude/agent-memory/), or 'local' (.openclaude/agent-memory-local/)
 export type AgentMemoryScope = 'user' | 'project' | 'local'
 
 /**
@@ -133,7 +133,7 @@ export function getMemoryScopeDisplay(
  * Creates the memory directory if needed and returns a prompt with memory contents.
  *
  * @param agentType The agent's type name (used as directory name)
- * @param scope 'user' for ~/.openclaude/agent-memory/ or 'project' for .openclaude/agent-memory/
+ * @param scope 'user' for ~/.orbitcode/agent-memory/ or 'project' for .openclaude/agent-memory/
  */
 export function loadAgentMemoryPrompt(
   agentType: string,

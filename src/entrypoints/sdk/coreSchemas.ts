@@ -1197,7 +1197,7 @@ export const AgentDefinitionSchema = lazySchema(() =>
         .enum(['user', 'project', 'local'])
         .optional()
         .describe(
-          "Scope for auto-loading agent memory files. 'user' - ~/.openclaude/agent-memory/<agentType>/, 'project' - .openclaude/agent-memory/<agentType>/, 'local' - .openclaude/agent-memory-local/<agentType>/",
+          "Scope for auto-loading agent memory files. 'user' - ~/.orbitcode/agent-memory/<agentType>/, 'project' - .openclaude/agent-memory/<agentType>/, 'local' - .openclaude/agent-memory-local/<agentType>/",
         ),
       effort: z
         .union([z.enum(['low', 'medium', 'high', 'xhigh', 'max']), z.number().int()])
@@ -1225,7 +1225,7 @@ export const SettingSourceSchema = lazySchema(() =>
     .enum(['user', 'project', 'local'])
     .describe(
       'Source for loading filesystem-based settings. ' +
-        "'user' - Global user settings (~/.openclaude/settings.json). " +
+        "'user' - Global user settings (~/.orbitcode/settings.json). " +
         "'project' - Project settings (.openclaude/settings.json). " +
         "'local' - Local settings (.openclaude/settings.local.json).",
     ),

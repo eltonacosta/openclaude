@@ -40,6 +40,7 @@ export const getGlobalClaudeFile = memoize((): string => {
 
   const oauthSuffix = fileSuffixForOauthConfig()
   const configDirEnv = resolveConfigDirEnv({
+    orbitCodeConfigDir: process.env.ORBITCODE_CONFIG_DIR,
     openClaudeConfigDir: process.env.OPENCLAUDE_CONFIG_DIR,
   })
   const configDir = configDirEnv || homedir()

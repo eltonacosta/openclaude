@@ -142,7 +142,6 @@ import plan from './commands/plan/index.js'
 import fast from './commands/fast/index.js'
 import passes from './commands/passes/index.js'
 import privacySettings from './commands/privacy-settings/index.js'
-import provider from './commands/provider/index.js'
 import hooks from './commands/hooks/index.js'
 import files from './commands/files/index.js'
 import branch from './commands/branch/index.js'
@@ -200,11 +199,6 @@ import model from './commands/model/index.js'
 import tag from './commands/tag/index.js'
 import outputStyle from './commands/output-style/index.js'
 import remoteEnv from './commands/remote-env/index.js'
-import upgrade from './commands/upgrade/index.js'
-import {
-  extraUsage,
-  extraUsageNonInteractive,
-} from './commands/extra-usage/index.js'
 import rateLimitOptions from './commands/rate-limit-options/index.js'
 import statusline from './commands/statusline.js'
 import effort from './commands/effort/index.js'
@@ -331,7 +325,6 @@ const COMMANDS = memoize((): Command[] => [
   outputStyle,
   remoteEnv,
   plugin,
-  provider,
   pr_comments,
   releaseNotes,
   reloadPlugins,
@@ -359,9 +352,6 @@ const COMMANDS = memoize((): Command[] => [
   securityReview,
   terminalSetup,
   update,
-  upgrade,
-  extraUsage,
-  extraUsageNonInteractive,
   rateLimitOptions,
   usage,
   usageReport,

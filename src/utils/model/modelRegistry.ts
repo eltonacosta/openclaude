@@ -13,6 +13,8 @@ export interface OrbitModel {
   context_window: number
   /** Whether the model supports reasoning/efforts parameter */
   supports_efforts: boolean
+  /** Configurable effort levels from models.dev reasoning_options (when known) */
+  effort_levels?: string[]
   /** Whether the model supports tool calls / function calling */
   supports_tools: boolean
   /** Optional human-readable description */
@@ -66,7 +68,8 @@ export class ModelRegistry {
           prev.supports_efforts !== m.supports_efforts ||
           prev.supports_tools !== m.supports_tools ||
           prev.displayName !== m.displayName ||
-          prev.description !== m.description
+          prev.description !== m.description ||
+          JSON.stringify(prev.effort_levels ?? []) !== JSON.stringify(m.effort_levels ?? [])
         if (isChanged) {
           updatedCount++
         }

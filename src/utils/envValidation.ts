@@ -51,6 +51,7 @@ const EnvSchema = z.object({
   ANTHROPIC_API_KEY: optionalNonEmptyString,
   ANTHROPIC_AUTH_TOKEN: optionalNonEmptyString,
   OPENCLAUDE_CONFIG_DIR: optionalNonEmptyString,
+  ORBITCODE_CONFIG_DIR: optionalNonEmptyString,
   CLAUDE_CONFIG_DIR: optionalNonEmptyString,
   HTTP_PROXY: z.string().url().optional().or(z.literal('')),
   HTTPS_PROXY: z.string().url().optional().or(z.literal('')),

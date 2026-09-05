@@ -121,7 +121,8 @@ const TEAMMATE_ENV_VARS = [
   'MISTRAL_BASE_URL',
   // Custom API endpoint
   'ANTHROPIC_BASE_URL',
-  // Config directory override (preferred name + legacy alias)
+  // Config directory override (preferred name + legacy aliases)
+  'ORBITCODE_CONFIG_DIR',
   'OPENCLAUDE_CONFIG_DIR',
   'CLAUDE_CONFIG_DIR',
   // CCR marker — teammates need this for CCR-aware code paths. Auth finds

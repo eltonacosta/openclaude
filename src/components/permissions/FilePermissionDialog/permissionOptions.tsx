@@ -27,14 +27,14 @@ export function isInClaudeFolder(filePath: string): boolean {
 }
 
 /**
- * Check if a path is within the global ~/.openclaude/ folder.
+ * Check if a path is within the global ~/.orbitcode/ folder.
  * This is used to determine whether to show the special OpenClaude folder permission option
  * for files in the user's home directory.
  */
 export function isInGlobalClaudeFolder(filePath: string): boolean {
   const absolutePath = expandPath(filePath);
   const normalizedAbsolutePath = normalizeCaseForComparison(absolutePath);
-  const globalClaudeFolderPaths = [expandPath('~/.openclaude')];
+  const globalClaudeFolderPaths = [expandPath('~/.orbitcode'), expandPath('~/.openclaude')];
 
   return globalClaudeFolderPaths.some(globalClaudeFolderPath => {
     const normalizedGlobalClaudeFolderPath = normalizeCaseForComparison(globalClaudeFolderPath);

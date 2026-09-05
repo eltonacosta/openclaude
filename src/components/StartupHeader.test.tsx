@@ -54,7 +54,7 @@ function createTestStreams(): {
 
 describe('StartupHeader', () => {
   test('renders brand, tagline, model, and version', async () => {
-    ;(globalThis as Record<string, unknown>).MACRO = { VERSION: '0.32.0' }
+    ;(globalThis as Record<string, unknown>).MACRO = { VERSION: '0.33.0' }
     const { stdout, stdin, getOutput } = createTestStreams()
     const root = await createRoot({
       stdout: stdout as unknown as NodeJS.WriteStream,
@@ -66,7 +66,7 @@ describe('StartupHeader', () => {
     const frame = stripAnsi(getOutput())
     expect(frame).toContain('ORBIT CODE')
     expect(frame).toContain('Orbit terminal for any LLM')
-    expect(frame).toContain('oc v0.32.0')
+    expect(frame).toContain('oc v0.33.0')
     root.unmount()
   })
 })

@@ -12,14 +12,14 @@ import { clearPluginOutputStyleCache } from '../utils/plugins/loadPluginOutputSt
 
 /**
  * Loads markdown files from .openclaude/output-styles directories throughout the project
- * and from ~/.openclaude/output-styles directory and converts them to output styles.
+ * and from ~/.orbitcode/output-styles directory and converts them to output styles.
  *
  * Each filename becomes a style name, and the file content becomes the style prompt.
  * The frontmatter provides name and description.
  *
  * Structure:
  * - Project .openclaude/output-styles/*.md -> project styles
- * - User ~/.openclaude/output-styles/*.md -> user styles (overridden by project styles)
+ * - User ~/.orbitcode/output-styles/*.md -> user styles (overridden by project styles)
  *
  * @param cwd Current working directory for project directory traversal
  */

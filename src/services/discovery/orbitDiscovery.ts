@@ -13,12 +13,18 @@ export interface RouterRawModel {
   max_input_tokens?: number
   supports_efforts?: boolean
   supports_tools?: boolean
+  capabilities?: {
+    reasoning?: boolean
+    tools?: boolean
+    [key: string]: unknown
+  }
   description?: string
   [key: string]: unknown
 }
 
 export interface DevModelInfo {
   supports_reasoning?: boolean
+  effort_levels?: string[]
   name?: string
 }
 
@@ -98,6 +104,66 @@ export async function fetchRouterModels(
 }
 
 /**
+ * Extracts configurable effort levels from a models.dev entry
+ * (`reasoning_options` with type "effort", plus the legacy `variants` map).
+ */
+export function extractDevEffortLevels(model: unknown): string[] {
+  if (!model || typeof model !== 'object') return []
+  const m = model as {
+    reasoning_options?: Array<{ type?: string; values?: unknown }>
+    variants?: Record<string, unknown>
+  }
+  const efforts: string[] = []
+  const options = Array.isArray(m.reasoning_options) ? m.reasoning_options : []
+  for (const option of options) {
+    if (option?.type !== 'effort') continue
+    const values = Array.isArray(option.values) ? option.values : []
+    for (const value of values) {
+      if (typeof value === 'string' && value.length > 0) efforts.push(value)
+    }
+  }
+  if (m.variants && typeof m.variants === 'object') {
+    efforts.push(...Object.keys(m.variants))
+  }
+  return [...new Set(efforts)]
+}
+
+/**
+ * Guesses the canonical models.dev provider for a bare model name
+ * (gpt-* -> openai, claude* -> anthropic, gemini/gemma -> google, ...).
+ * Used to prefer the right provider entry when the router prefix differs.
+ */
+function guessDevProvider(bareName: string): string | undefined {
+  const id = bareName.toLowerCase()
+  if (/^(gpt-|o1|o3|o4)/.test(id)) return 'openai'
+  if (/^claude/.test(id)) return 'anthropic'
+  if (/^(gemini|gemma)/.test(id)) return 'google'
+  if (/^glm/.test(id)) return 'zai'
+  if (/^deepseek/.test(id)) return 'deepseek'
+  if (/^(kimi|moonshot)/.test(id)) return 'moonshotai'
+  if (/^minimax/.test(id)) return 'minimax'
+  if (/^grok/.test(id)) return 'xai'
+  if (/^qwen/.test(id)) return 'alibaba'
+  return undefined
+}
+
+/**
+ * Builds lookup candidates for a router ID, shortest suffix first:
+ * "bai/zai/glm-latest" -> ["glm-latest", "zai/glm-latest",
+ * "bai/zai/glm-latest"]. Strips a trailing ":free" serving suffix.
+ */
+function getDevLookupCandidates(rawId: string): string[] {
+  const normalized = rawId.trim().toLowerCase().replace(/:free$/, '')
+  if (!normalized) return []
+  const parts = normalized.split('/').filter(Boolean)
+  const candidates: string[] = []
+  for (let i = parts.length - 1; i >= 0; i--) {
+    candidates.push(parts.slice(i).join('/'))
+  }
+  return [...new Set(candidates)]
+}
+
+/**
  * Indexes the models.dev catalog for fast case-insensitive lookup by parsed base name and full ID.
  */
 export function indexDevModelsCatalog(catalogData: Record<string, unknown>): Record<string, DevModelInfo> {
@@ -116,6 +182,7 @@ export function indexDevModelsCatalog(catalogData: Record<string, unknown>): Rec
           supports_reasoning:
             (m.reasoning as boolean | undefined) ??
             (m.supports_reasoning as boolean | undefined),
+          effort_levels: extractDevEffortLevels(modelVal),
           name: m.name as string | undefined,
         }
 
@@ -128,6 +195,7 @@ export function indexDevModelsCatalog(catalogData: Record<string, unknown>): Rec
         supports_reasoning:
           (m.reasoning as boolean | undefined) ??
           (m.supports_reasoning as boolean | undefined),
+        effort_levels: extractDevEffortLevels(val),
         name: m.name as string | undefined,
       }
 
@@ -180,21 +248,37 @@ function findDevModelInfo(
   modelId: string,
   catalog: Record<string, DevModelInfo>,
 ): DevModelInfo | undefined {
-  const normalizedModelId = modelId.trim().toLowerCase()
-  const parsedName = normalizedModelId.split('/').pop() || normalizedModelId
+  const candidates = getDevLookupCandidates(modelId)
+  if (candidates.length === 0) return undefined
 
-  const exactMatch = catalog[normalizedModelId] || catalog[parsedName]
-  if (exactMatch) {
-    return exactMatch
+  // Phase 1: providers hinted by the router prefix (reversed, most specific
+  // first) plus the canonical provider guessed from the bare model name, so
+  // "bai/zai/glm-latest" checks zai/* then bai/* before going global.
+  const normalized = modelId.trim().toLowerCase().replace(/:free$/, '')
+  const parts = normalized.split('/').filter(Boolean)
+  const hints = parts.slice(0, -1).reverse()
+  const canonical = guessDevProvider(candidates[0] ?? '')
+  for (const provider of [...new Set([...hints, ...(canonical ? [canonical] : [])])]) {
+    for (const candidate of candidates) {
+      const hit = catalog[`${provider}/${candidate}`]
+      if (hit) return hit
+    }
   }
 
-  // Router IDs often add a provider prefix and a serving variant, such as
-  // "ag/gemini-3.8-flash-high" for the models.dev entry
-  // "google/gemini-3.8-flash". Compare both the complete router ID and its
-  // provider-free name, then prefer the longest catalog alias.
+  // Phase 2: exact candidate anywhere in the catalog (shortest suffix first).
+  // Indexing prefers entries carrying effort metadata, so a bare "glm-latest"
+  // hit already favors the provider entry that documents reasoning options.
+  for (const candidate of candidates) {
+    const hit = catalog[candidate]
+    if (hit) return hit
+  }
+
+  // Phase 3: longest-alias substring fallback for router serving variants
+  // (e.g. "ag/gemini-3.8-flash-high" for "google/gemini-3.8-flash").
+  const parsedName = candidates[0]!
   return Object.entries(catalog)
     .filter(([catalogName]) =>
-      normalizedModelId.includes(catalogName) || parsedName.includes(catalogName),
+      normalized.includes(catalogName) || parsedName.includes(catalogName),
     )
     .sort(([left], [right]) => right.length - left.length)
     .at(0)?.[1]
@@ -267,6 +351,35 @@ function resolveRouterContextWindow(model: RouterRawModel): number {
 }
 
 /**
+ * Resolves reasoning/effort support from the raw gateway payload. The router
+ * advertises it inside `capabilities.reasoning` (alongside a top-level
+ * `supports_efforts` on some gateways), so both are read router-first:
+ * models.dev only fills the gap when the router says nothing.
+ */
+function resolveRouterEffortSupport(
+  model: RouterRawModel,
+  devSupportsReasoning: boolean | undefined,
+): boolean {
+  const caps = model.capabilities
+  const capsReasoning =
+    caps && typeof caps.reasoning === 'boolean' ? caps.reasoning : undefined
+  return (
+    model.supports_efforts ??
+    capsReasoning ??
+    devSupportsReasoning ??
+    false
+  )
+}
+
+/** Same router-first rule for tool calling (`capabilities.tools`). */
+function resolveRouterToolSupport(model: RouterRawModel): boolean {
+  const caps = model.capabilities
+  const capsTools =
+    caps && typeof caps.tools === 'boolean' ? caps.tools : undefined
+  return model.supports_tools ?? capsTools ?? true
+}
+
+/**
  * Executes the full discovery and enrichment pipeline:
  * 1. Fetches models and runtime metadata from Orbit Router (`/v1/models`).
  * 2. Fetches reasoning support from models.dev.
@@ -299,16 +412,21 @@ export async function runDiscovery(
     const parsedName = fullId.split('/').pop() || fullId
 
     // Match exact IDs first, then identify router variants by the longest
-    // models.dev name. Only effort support is imported from models.dev.
+    // models.dev name. models.dev only fills effort support when the router
+    // payload itself carries no reasoning signal.
     const matchedDevModel = findDevModelInfo(fullId, devModelsCatalog)
+    const devEffortLevels = matchedDevModel?.effort_levels
 
     return {
       id: fullId, // Used in API inference requests
       displayName: parsedName,
       context_window: resolveRouterContextWindow(model),
-      supports_efforts:
-        matchedDevModel?.supports_reasoning ?? model.supports_efforts ?? false,
-      supports_tools: model.supports_tools ?? true,
+      supports_efforts: resolveRouterEffortSupport(
+        model,
+        matchedDevModel?.supports_reasoning,
+      ),
+      effort_levels: devEffortLevels?.length ? devEffortLevels : undefined,
+      supports_tools: resolveRouterToolSupport(model),
       description: model.description,
       raw: model,
     }

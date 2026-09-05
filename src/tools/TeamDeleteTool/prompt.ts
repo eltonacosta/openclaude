@@ -5,8 +5,8 @@ export function getPrompt(): string {
 Remove team and task directories when the swarm work is complete.
 
 This operation:
-- Removes the team directory (\`~/.openclaude/teams/{team-name}/\`)
-- Removes the task directory (\`~/.openclaude/tasks/{team-name}/\`)
+- Removes the team directory (\`~/.orbitcode/teams/{team-name}/\`)
+- Removes the task directory (\`~/.orbitcode/tasks/{team-name}/\`)
 - Clears team context from the current session
 
 **IMPORTANT**: TeamDelete will fail if the team still has active members. Gracefully terminate teammates first, then call TeamDelete after all teammates have shut down.

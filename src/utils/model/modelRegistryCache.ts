@@ -11,7 +11,7 @@ import type { OrbitModel } from './modelRegistry.js'
  * at boot without requiring a manual `/discovery`.
  *
  * The cache is global (shared across projects), matching the scope of
- * `~/.openclaude/config.json` where Orbit Router credentials live.
+ * `~/.orbitcode/config.json` where Orbit Router credentials live.
  */
 
 export interface OrbitModelCacheFile {
@@ -27,7 +27,7 @@ let modelRegistryCachePathOverride: string | undefined
 
 /**
  * Test-only escape hatch — redirects the cache file path so unit tests never
- * touch the real `~/.openclaude` directory.
+ * touch the real `~/.orbitcode` directory.
  */
 export function setModelRegistryCachePathOverrideForTesting(
   path: string | undefined,
@@ -37,7 +37,7 @@ export function setModelRegistryCachePathOverrideForTesting(
 
 /**
  * Resolves the global cache file path.
- * Defaults to `~/.openclaude/models-cache.json` (same home dir as the Orbit
+ * Defaults to `~/.orbitcode/models-cache.json` (same home dir as the Orbit
  * Router `config.json`).
  */
 export function getModelRegistryCachePath(): string {

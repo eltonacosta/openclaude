@@ -123,13 +123,23 @@ export function getClaudeSkillScope(
   const absolutePath = expandPath(filePath)
   const absolutePathLower = normalizeCaseForComparison(absolutePath)
 
+  const homeDir = homedir()
+  const resolvedHome = getClaudeConfigHomeDir()
   const bases = [
     {
       dir: expandPath(join(getOriginalCwd(), '.openclaude', 'skills')),
       prefix: '/.openclaude/skills/',
     },
     {
-      dir: expandPath(join(homedir(), '.openclaude', 'skills')),
+      dir: expandPath(join(resolvedHome, 'skills')),
+      // Display prefix follows the resolved home: ~/.orbitcode for the new
+      // default, ~/.openclaude when overridden to the legacy dir.
+      prefix: normalizeCaseForComparison(resolvedHome).endsWith('.openclaude')
+        ? '~/.openclaude/skills/'
+        : '~/.orbitcode/skills/',
+    },
+    {
+      dir: expandPath(join(homeDir, '.openclaude', 'skills')),
       prefix: '~/.openclaude/skills/',
     },
   ]
@@ -1469,8 +1479,8 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
   if (claudeFolderAllowRule) {
     // Check if this rule is scoped under a Claude config folder.
     // Accepts broad project/global patterns ('/.openclaude/**',
-    // '~/.openclaude/**') plus narrowed skill
-    // patterns like '~/.openclaude/skills/my-skill/**' so users can grant
+    // '~/.orbitcode/**') plus narrowed skill
+    // patterns like '~/.orbitcode/skills/my-skill/**' so users can grant
     // session access to a single skill without also exposing settings.json
     // or hooks/. The rule already matched the path via matchingRuleForInput;
     // this is an additional scope check. Reject '..' to prevent a rule like
@@ -1794,7 +1804,7 @@ export function checkEditableInternalPath(
   // .openclaude/ DANGEROUS_DIRECTORIES check prompts for it, which in SDK mode
   // cascades: user clicks "Always allow" → setMode:acceptEdits suggestion
   // applied → silent downgrade from auto mode. Matches the project-level
-  // .openclaude/ only (not ~/.openclaude/) since launch.json is per-project.
+  // .openclaude/ only (not ~/.orbitcode/) since launch.json is per-project.
   if (
     normalizeCaseForComparison(normalizedPath) ===
     normalizeCaseForComparison(join(getOriginalCwd(), '.openclaude', 'launch.json'))

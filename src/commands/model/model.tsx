@@ -713,6 +713,15 @@ function ModelPickerWrapper({
     effort: EffortLevel | undefined,
     switchToProfileId?: string,
   ) => {
+    // Orbit setup pointer: with no discovered models the picker offers a
+    // setup row instead of provider catalogs. Selecting it explains the
+    // next step rather than switching to a bogus model id.
+    if (model === '__orbit-setup__') {
+      onDone('No models configured yet. Run /login <API_URL> <API_KEY> then /discovery to fetch models from your Orbit Router.', {
+        display: 'system',
+      })
+      return
+    }
     // Cross-profile switch from /model picker (issue #1119). The composite
     // value carries the profile id; activate that profile first so subsequent
     // requests use the new OPENAI_BASE_URL / OPENAI_API_KEY, then drop down to

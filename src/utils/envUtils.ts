@@ -4,19 +4,20 @@ import { join } from 'path'
 
 /**
  * Resolves the override env value for the config home directory.
- * Resolves the OpenClaude config home override.
+ * Resolves the Orbit Code config home override.
  *
- * Intentionally does not read `CLAUDE_CONFIG_DIR`: OpenClaude config must stay
+ * Intentionally does not read `CLAUDE_CONFIG_DIR`: Orbit Code config must stay
  * independent from Claude Code config and credentials.
  */
 export function resolveConfigDirEnv(options?: {
   openClaudeConfigDir?: string
+  orbitCodeConfigDir?: string
   legacyConfigDir?: string
   warn?: (message: string) => void
 }): string | undefined {
   void options?.legacyConfigDir
   void options?.warn
-  return options?.openClaudeConfigDir || undefined
+  return options?.orbitCodeConfigDir || options?.openClaudeConfigDir || undefined
 }
 
 /**
@@ -36,9 +37,9 @@ export function resolveClaudeConfigHomeDir(options?: {
   }
 
   const homeDir = options?.homeDir ?? homedir()
-  const openClaudeDir = join(homeDir, '.openclaude')
+  const orbitCodeDir = join(homeDir, '.orbitcode')
 
-  return openClaudeDir.normalize('NFC')
+  return orbitCodeDir.normalize('NFC')
 }
 
 let claudeConfigHomeDirOverride: string | undefined
@@ -73,6 +74,7 @@ export const getClaudeConfigHomeDir = Object.assign(
     }
 
     const configDirEnv = resolveConfigDirEnv({
+      orbitCodeConfigDir: process.env.ORBITCODE_CONFIG_DIR,
       openClaudeConfigDir: process.env.OPENCLAUDE_CONFIG_DIR,
     })
     if (configDirEnv) {

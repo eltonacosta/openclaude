@@ -119,6 +119,14 @@ function restoreEnv(key: keyof typeof SAVED_ENV): void {
 
 beforeEach(async () => {
   await acquireSharedMutationLock('model/model.openai-shim-providers.test.ts')
+  // Orbit Code resolves defaults from the discovered ModelRegistry. Other
+  // suites (notably discovery tests) populate the global registry, so clear
+  // it here with the cache redirected — otherwise a stale registry entry
+  // hijacks the provider-default branches under test.
+  const { ModelRegistry } = await import('./modelRegistry.js')
+  const { setModelRegistryCachePathOverrideForTesting } = await import('./modelRegistryCache.js')
+  setModelRegistryCachePathOverrideForTesting('/nonexistent/cache/path.json')
+  ModelRegistry.clear()
   // Other test files (notably modelOptions.github.test.ts) install a
   // persistent mock.module for './providers.js' that overrides getAPIProvider
   // globally. Without mock.restore() here, those overrides bleed into this
@@ -171,6 +179,10 @@ afterEach(async () => {
     resetStateForTests()
     resetSettingsCache()
     clearPluginSettingsBase()
+    const { ModelRegistry } = await import('./modelRegistry.js')
+    const { setModelRegistryCachePathOverrideForTesting } = await import('./modelRegistryCache.js')
+    ModelRegistry.clear()
+    setModelRegistryCachePathOverrideForTesting(undefined)
     await restoreMockedModulesToActual()
     for (const key of Object.keys(SAVED_ENV) as Array<keyof typeof SAVED_ENV>) {
       restoreEnv(key)

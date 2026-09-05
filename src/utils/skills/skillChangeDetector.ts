@@ -214,13 +214,13 @@ async function getWatchablePaths(): Promise<string[]> {
     }
   }
 
-  // User skills directory (~/.openclaude/skills)
+  // User skills directory (~/.orbitcode/skills)
   const userSkillsPath = dependencies.getSkillsPath('userSettings', 'skills')
   if (userSkillsPath) {
     await pushIfExists(userSkillsPath)
   }
 
-  // User commands directory (~/.openclaude/commands)
+  // User commands directory (~/.orbitcode/commands)
   const userCommandsPath = dependencies.getSkillsPath(
     'userSettings',
     'commands',

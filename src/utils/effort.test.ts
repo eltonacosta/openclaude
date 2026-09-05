@@ -438,3 +438,81 @@ describe('configured third-party effort precedence', () => {
     ).toBe('medium')
   })
 })
+
+describe('Orbit Router registry effort', () => {
+  test('registry models bypass legacy allowlists on a custom route', async () => {
+    const { setModelRegistryCachePathOverrideForTesting } = await import(
+      './model/modelRegistryCache.js'
+    )
+    const { ModelRegistry } = await import('./model/modelRegistry.js')
+    setModelRegistryCachePathOverrideForTesting('/nonexistent/cache/path.json')
+    ModelRegistry.clear()
+    try {
+      ModelRegistry.updateModels([
+        {
+          id: 'oc/muse-spark-1.3-contributor-free',
+          displayName: 'muse-spark-1.3-contributor-free',
+          context_window: 200000,
+          supports_efforts: true,
+          effort_levels: ['low', 'medium', 'high'],
+          supports_tools: true,
+        },
+      ])
+      const { getAvailableEffortLevels, modelSupportsEffort, resolveModelReasoningControl } =
+        await importFreshEffortModule()
+      const context = {
+        apiProvider: 'openai' as const,
+        routeId: 'custom',
+        useRuntimeFallback: false,
+      }
+      expect(
+        resolveModelReasoningControl('oc/muse-spark-1.3-contributor-free', context),
+      ).toMatchObject({
+        supportsReasoning: true,
+        controllable: true,
+        source: 'capability',
+        levels: ['low', 'medium', 'high'],
+        wireFormat: 'reasoning_effort',
+      })
+      expect(modelSupportsEffort('oc/muse-spark-1.3-contributor-free', context)).toBe(true)
+      expect(getAvailableEffortLevels('oc/muse-spark-1.3-contributor-free', context)).toEqual([
+        'low',
+        'medium',
+        'high',
+      ])
+    } finally {
+      ModelRegistry.clear()
+      setModelRegistryCachePathOverrideForTesting(undefined)
+    }
+  })
+
+  test('registry models without effort stay unsupported', async () => {
+    const { setModelRegistryCachePathOverrideForTesting } = await import(
+      './model/modelRegistryCache.js'
+    )
+    const { ModelRegistry } = await import('./model/modelRegistry.js')
+    setModelRegistryCachePathOverrideForTesting('/nonexistent/cache/path.json')
+    ModelRegistry.clear()
+    try {
+      ModelRegistry.updateModels([
+        {
+          id: 'gh/gpt-4o',
+          displayName: 'gpt-4o',
+          context_window: 128000,
+          supports_efforts: false,
+          supports_tools: true,
+        },
+      ])
+      const { modelSupportsEffort } = await importFreshEffortModule()
+      const context = {
+        apiProvider: 'openai' as const,
+        routeId: 'custom',
+        useRuntimeFallback: false,
+      }
+      expect(modelSupportsEffort('gh/gpt-4o', context)).toBe(false)
+    } finally {
+      ModelRegistry.clear()
+      setModelRegistryCachePathOverrideForTesting(undefined)
+    }
+  })
+})

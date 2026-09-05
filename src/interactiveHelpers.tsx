@@ -106,7 +106,7 @@ export async function renderAndRun(root: Root, element: React.ReactNode): Promis
   await gracefulShutdown(0);
 }
 export async function showSetupScreens(root: Root, permissionMode: PermissionMode, allowDangerouslySkipPermissions: boolean, commands?: Command[], claudeInChrome?: boolean, devChannels?: ChannelEntry[]): Promise<boolean> {
-  if (process.env.NODE_ENV === 'test' || isEnvTruthy(false) || process.env.IS_DEMO // Skip onboarding in demo mode
+  if (process.env.NODE_ENV === 'test' || process.env.IS_DEMO // Skip onboarding in demo mode
   ) {
     return false;
   }
@@ -114,6 +114,31 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
   const usesAnthropicSetup = usesAnthropicAccountFlow();
   const config = getGlobalConfig();
   let onboardingShown = false;
+
+  // Orbit Router first-boot setup: the Orbit config file is the single source
+  // of truth (env vars and legacy provider profiles are ignored — replayed
+  // env would otherwise skip setup with stale credentials). With no stored
+  // config, ask for the API URL + token and run discovery (same pair as
+  // `/login <API_URL> <API_KEY>`) before anything else. Setup is mandatory:
+  // skipping exits instead of entering the REPL credential-less.
+  const { hasOrbitCredentials } = await import('./components/OrbitRouterSetup.js');
+  if (!hasOrbitCredentials()) {
+    const { OrbitRouterSetup } = await import('./components/OrbitRouterSetup.js');
+    const setupResult = await showSetupDialog<{ skipped: boolean }>(root, done => (
+      <OrbitRouterSetup
+        onDone={result => {
+          done({ skipped: result.type === 'skip' });
+        }}
+      />
+    ), {
+      onChangeAppState
+    });
+    if (setupResult.skipped) {
+      root.unmount();
+      process.stdout.write('Router setup skipped. Run `oc` again and enter your API URL + token, or configure later with /login.\n');
+      await gracefulShutdown(0);
+    }
+  }
 
   // Onboarding runs for ALL providers: theme + security notes are universal,
   // and the component itself drops the preflight/OAuth steps when Anthropic

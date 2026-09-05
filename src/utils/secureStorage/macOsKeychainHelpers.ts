@@ -37,7 +37,7 @@ export const CREDENTIALS_SERVICE_SUFFIX = '-credentials'
 export function getSecureStorageServiceName(
   serviceSuffix: string = '',
 ): string {
-  const configDirEnv = process.env.OPENCLAUDE_CONFIG_DIR || undefined
+  const configDirEnv = process.env.ORBITCODE_CONFIG_DIR || process.env.OPENCLAUDE_CONFIG_DIR || undefined
   const configDir = configDirEnv
     ? resolveClaudeConfigHomeDir({ configDirEnv })
     : getClaudeConfigHomeDir()

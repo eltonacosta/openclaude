@@ -411,6 +411,12 @@ export function getRuntimeMainLoopModel(params: {
  * @returns The default model setting to use
  */
 export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
+  // Orbit Code serves models exclusively from the configured Orbit Router.
+  // The discovered registry is authoritative; provider defaults below only
+  // apply when no router models are known.
+  if (ModelRegistry.hasModels()) {
+    return ModelRegistry.getModels()[0]!.id
+  }
   if (resolveActiveRouteIdFromEnv(process.env) === 'concentrate') {
     return (
       getAllowedConcentrateConfigModel() ||

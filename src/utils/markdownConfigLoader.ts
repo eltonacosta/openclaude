@@ -43,7 +43,7 @@ export const PROJECT_CONFIG_DIR_NAMES = ['.openclaude'] as const
 // Concurrency cap for parallel readFile + parseFrontmatter when loading
 // commands/agents/skills/etc. With unbounded Promise.all, a directory holding
 // thousands of markdown files (e.g., an Obsidian vault symlinked into
-// ~/.openclaude/agents — see issue #769) opens that many fds and blocks the
+// ~/.orbitcode/agents — see issue #769) opens that many fds and blocks the
 // event loop on parse work, freezing the REPL at startup. Batching keeps fd
 // pressure and CPU bursts bounded.
 const MARKDOWN_LOAD_BATCH_SIZE = 32
@@ -444,7 +444,7 @@ export const loadMarkdownFilesForSubdir = memoize(
     const allFiles = [...managedFiles, ...userFiles, ...projectFiles]
 
     // Deduplicate files that resolve to the same physical file (same inode).
-    // This prevents the same file from appearing multiple times when ~/.openclaude is
+    // This prevents the same file from appearing multiple times when ~/.orbitcode is
     // symlinked to a directory within the project hierarchy, causing the same
     // physical file to be discovered through different paths.
     const fileIdentities = await Promise.all(
@@ -606,7 +606,7 @@ async function findMarkdownFilesNative(
 
 /**
  * Generic function to load markdown files from specified directories
- * @param dir Directory (eg. "~/.openclaude/commands")
+ * @param dir Directory (eg. "~/.orbitcode/commands")
  * @returns Array of parsed markdown files with metadata
  */
 async function loadMarkdownFiles(dir: string): Promise<

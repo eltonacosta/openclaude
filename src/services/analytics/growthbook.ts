@@ -4,9 +4,9 @@
  *
  * OpenClaude does not phone home. This module replaces the original
  * analytics-driven GrowthBook client with a local-only implementation that
- * reads feature flags from ~/.openclaude/feature-flags.json for developer overrides.
+ * reads feature flags from ~/.orbitcode/feature-flags.json for developer overrides.
  *
- * Priority: OPENCLAUDE_FEATURE_FLAGS_FILE env > CLAUDE_FEATURE_FLAGS_FILE env > ~/.openclaude/feature-flags.json > defaultValue
+ * Priority: OPENCLAUDE_FEATURE_FLAGS_FILE env > CLAUDE_FEATURE_FLAGS_FILE env > ~/.orbitcode/feature-flags.json > defaultValue
  */
 
 import { existsSync, readFileSync } from 'node:fs'
@@ -31,7 +31,7 @@ function _loadFlags(): void {
 		const flagsPath =
 			process.env.OPENCLAUDE_FEATURE_FLAGS_FILE ||
 			process.env.CLAUDE_FEATURE_FLAGS_FILE ||
-			join(homedir(), '.openclaude', 'feature-flags.json')
+			join(homedir(), '.orbitcode', 'feature-flags.json')
 		const parsed = JSON.parse(readFileSync(flagsPath, 'utf-8'))
 		_flags =
 			parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null

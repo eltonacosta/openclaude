@@ -23,6 +23,7 @@ import type {
   ReasoningWireFormat,
 } from '../integrations/descriptors.js'
 import { isEnvTruthy } from './envUtils.js'
+import { ModelRegistry } from './model/modelRegistry.js'
 import type { EffortLevel } from 'src/entrypoints/sdk/runtimeTypes.js'
 
 export type { EffortLevel }
@@ -463,6 +464,39 @@ function resolveConfigured3PReasoningControl(
   }
 }
 
+/**
+ * Orbit Router registry reasoning: when the model was discovered from the
+ * configured router, its stored supports_efforts flag is authoritative and
+ * models.dev reasoning_options (captured at discovery) provide the levels.
+ * Returns undefined when the model is not in the registry so other providers
+ * keep their existing resolution. A registry entry with supports_efforts
+ * false explicitly disables effort (source 'capability', no levels).
+ */
+function resolveOrbitRegistryReasoningControl(
+  model: string,
+): ReasoningControlResolution | undefined {
+  const entry = ModelRegistry.getModel(model)
+  if (!entry) return undefined
+  if (!entry.supports_efforts) {
+    return {
+      supportsReasoning: false,
+      controllable: false,
+      levels: [],
+      source: 'capability',
+    }
+  }
+  const levels = (entry.effort_levels ?? []).filter(isSupportedEffortLevel)
+  return {
+    supportsReasoning: true,
+    controllable: true,
+    mode: 'levels',
+    levels: levels.length > 0 ? levels : [...DEFAULT_REASONING_LEVELS],
+    defaultLevel: undefined,
+    wireFormat: 'reasoning_effort',
+    source: 'capability',
+  }
+}
+
 type NativeLegacyEffortTransport = 'anthropic' | 'gemini'
 
 function resolveNativeLegacyEffortTransport(
@@ -625,6 +659,15 @@ export function resolveModelReasoningControl(
   const configured3P = resolveConfigured3PReasoningControl(model, context)
   if (configured3P) {
     return configured3P
+  }
+
+  // Orbit Router registry: models discovered via /v1/models carry their own
+  // reasoning signal (router capabilities + models.dev reasoning_options).
+  // This runs before the legacy allowlists so a registry model is never gated
+  // by hardcoded first-party name checks.
+  const orbitRegistry = resolveOrbitRegistryReasoningControl(model)
+  if (orbitRegistry) {
+    return orbitRegistry
   }
 
   const nativeTransport = resolveNativeLegacyEffortTransport(model, context)

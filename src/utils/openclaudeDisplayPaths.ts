@@ -9,6 +9,7 @@ import { getDisplayPath } from './file.js'
 
 function getUserConfigHomeForDisplay(): string {
   const configDirEnv = resolveConfigDirEnv({
+    orbitCodeConfigDir: process.env.ORBITCODE_CONFIG_DIR,
     openClaudeConfigDir: process.env.OPENCLAUDE_CONFIG_DIR,
   })
 

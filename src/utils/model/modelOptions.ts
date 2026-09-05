@@ -146,44 +146,19 @@ function getScopedAdditionalModelOptions(): ModelOption[] {
 }
 
 export function getDefaultOptionForUser(fastMode = false): ModelOption {
-  const is3P = !isFirstPartyAnthropicProvider()
-  const currentDefaultModel =
-    isCustomAnthropicProvider() && process.env.ANTHROPIC_MODEL
-      ? process.env.ANTHROPIC_MODEL
-      : getDefaultMainLoopModelSetting()
-
-  if (process.env.USER_TYPE === 'ant' && !is3P) {
-    const currentModel = renderDefaultModelSetting(currentDefaultModel)
+  void fastMode
+  if (ModelRegistry.hasModels()) {
+    const current = ModelRegistry.getModels()[0]!.id
     return {
       value: null,
       label: 'Default (recommended)',
-      description: `Use the default model for Ants (currently ${currentModel})`,
-      descriptionForModel: `Default model (currently ${currentModel})`,
+      description: `Use the default model (currently ${current})`,
     }
   }
-
-  if (is3P) {
-    return {
-      value: null,
-      label: 'Default (recommended)',
-      description: `Use the default model (currently ${renderDefaultModelSetting(currentDefaultModel)})`,
-    }
-  }
-
-  // Subscribers
-  if (isClaudeAISubscriber()) {
-    return {
-      value: null,
-      label: 'Default (recommended)',
-      description: getClaudeAiUserDefaultModelDescription(fastMode),
-    }
-  }
-
-  // PAYG
   return {
     value: null,
     label: 'Default (recommended)',
-    description: `Use the default model (currently ${renderDefaultModelSetting(currentDefaultModel)})${getPricingSuffix(getDefaultSonnetModel())}`,
+    description: 'No models discovered yet — run /login then /discovery',
   }
 }
 
@@ -554,238 +529,21 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     return [defaultOption, ...orbitOptions, ...inactiveProfileOptions]
   }
 
-  if (getAPIProvider() === 'github') {
+  // Orbit Code serves models exclusively from the configured Orbit Router.
+  // Without discovered models there are no provider catalogs to fall back
+  // to — point at /login + /discovery instead of listing defaults.
+  {
+    const defaultOption = getDefaultOptionForUser(fastMode)
     return [
-      getDefaultOptionForUser(fastMode),
-      ...getCopilotModelOptions(),
+      defaultOption,
+      {
+        value: '__orbit-setup__',
+        label: 'No models yet — run /login <API_URL> <API_KEY> then /discovery',
+        description: 'Configure the Orbit Router to fetch models',
+      },
       ...inactiveProfileOptions,
     ]
   }
-
-  // When using Ollama, show models from the Ollama server instead of Claude models
-  if (getAPIProvider() === 'openai' && isOllamaProvider()) {
-    const defaultOption = getDefaultOptionForUser(fastMode)
-    const ollamaModels = getCachedOllamaModelOptions()
-    if (ollamaModels.length > 0) {
-      return [defaultOption, ...ollamaModels, ...inactiveProfileOptions]
-    }
-    // Fallback: if models not yet fetched, show current model instead of Claude models
-    const currentModel = getUserSpecifiedModelSetting() ?? getInitialMainLoopModel()
-    if (currentModel != null) {
-      return [
-        defaultOption,
-        {
-          value: currentModel,
-          label: currentModel,
-          description: 'Currently configured Ollama model',
-        },
-        ...inactiveProfileOptions,
-      ]
-    }
-    return [defaultOption, ...inactiveProfileOptions]
-  }
-
-  // When using NVIDIA NIM, show models from the NVIDIA catalog
-  if (isNvidiaNimProvider()) {
-    const defaultOption = getDefaultOptionForUser(fastMode)
-    const nvidiaModels = getCachedNvidiaNimModelOptions()
-    if (nvidiaModels.length > 0) {
-      return [defaultOption, ...nvidiaModels, ...inactiveProfileOptions]
-    }
-    return [defaultOption, ...inactiveProfileOptions]
-  }
-
-  // When using MiniMax, show models from the MiniMax catalog
-  if (isMiniMaxProvider()) {
-    const defaultOption = getDefaultOptionForUser(fastMode)
-    const minimaxModels = getCachedMiniMaxModelOptions()
-    if (minimaxModels.length > 0) {
-      return [defaultOption, ...minimaxModels, ...inactiveProfileOptions]
-    }
-    return [defaultOption, ...inactiveProfileOptions]
-  }
-
-  // When using Xiaomi MiMo, show models from the MiMo catalog
-  if (isXiaomiMimoProvider()) {
-    const defaultOption = getDefaultOptionForUser(fastMode)
-    const xiaomiMimoModels = getCachedXiaomiMimoModelOptions()
-    if (xiaomiMimoModels.length > 0) {
-      return [defaultOption, ...xiaomiMimoModels, ...inactiveProfileOptions]
-    }
-    return [defaultOption, ...inactiveProfileOptions]
-  }
-
-  const activeProfile = getActiveProviderProfile()
-  const activeRouteId = resolveActiveRouteIdFromEnv(process.env, {
-    activeProfileProvider: activeProfile?.provider,
-    activeProfileBaseUrl: activeProfile?.baseUrl,
-  })
-  if (getTransportKindForRoute(activeRouteId ?? '') === 'anthropic-proxy') {
-    const directEnvOption =
-      profileModelOptions.length === 0 && process.env.ANTHROPIC_MODEL
-        ? [{
-            value: process.env.ANTHROPIC_MODEL,
-            label: process.env.ANTHROPIC_MODEL,
-            description: 'Custom Anthropic-compatible endpoint',
-          }]
-        : []
-    return [
-      getDefaultOptionForUser(fastMode),
-      ...profileModelOptions,
-      ...directEnvOption,
-      ...inactiveProfileOptions,
-    ]
-  }
-
-  if (process.env.USER_TYPE === 'ant') {
-    // Build options from antModels config
-    const antModelOptions: ModelOption[] = getAntModels().map(m => ({
-      value: m.alias,
-      label: m.label,
-      description: m.description ?? `[internal] ${m.label} (${m.model})`,
-    }))
-
-    return [
-      getDefaultOptionForUser(),
-      ...antModelOptions,
-      getMergedOpus1MOption(fastMode),
-      getSonnet46Option(),
-      getSonnet46_1MOption(),
-      getHaiku45Option(),
-      ...inactiveProfileOptions,
-    ]
-  }
-
-  if (isClaudeAISubscriber()) {
-    if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
-      // Max and Team Premium users: Opus is default, show Sonnet as alternative
-      const premiumOptions = [getDefaultOptionForUser(fastMode)]
-      if (!isOpus1mMergeEnabled() && checkOpus1mAccess()) {
-        premiumOptions.push(getMaxOpus46_1MOption(fastMode))
-      }
-
-      premiumOptions.push(MaxSonnet46Option)
-      if (checkSonnet1mAccess()) {
-        premiumOptions.push(getMaxSonnet46_1MOption())
-      }
-
-      premiumOptions.push(MaxHaiku45Option)
-      premiumOptions.push(...inactiveProfileOptions)
-      return premiumOptions
-    }
-
-    // Pro/Team Standard/Enterprise users: Sonnet is default, show Opus as alternative
-    const standardOptions = [getDefaultOptionForUser(fastMode)]
-    if (checkSonnet1mAccess()) {
-      standardOptions.push(getMaxSonnet46_1MOption())
-    }
-
-    if (isOpus1mMergeEnabled()) {
-      standardOptions.push(getMergedOpus1MOption(fastMode))
-    } else {
-      standardOptions.push(getMaxOpusOption(fastMode))
-      if (checkOpus1mAccess()) {
-        standardOptions.push(getMaxOpus46_1MOption(fastMode))
-      }
-    }
-
-    standardOptions.push(MaxHaiku45Option)
-    standardOptions.push(...inactiveProfileOptions)
-    return standardOptions
-  }
-
-  // Local OpenAI-compatible / route-catalog scope. Inactive-profile options are
-  // appended here too so the unified `/model` switcher still surfaces every
-  // other configured profile while a local/route profile is active (#1119).
-  const activeRouteCatalogOptions = getActiveOpenAIRouteCatalogOptions()
-  const openAIModelOptionsScope = getAdditionalModelOptionsCacheScope()
-  if (
-    activeRouteCatalogOptions.length > 0 ||
-    openAIModelOptionsScope?.startsWith('openai:')
-  ) {
-    const activeOpenAIOptions = activeProfile
-      ? getActiveOpenAIModelOptionsCache()
-      : []
-    const scopedOptions = openAIModelOptionsScope?.startsWith('openai:')
-      ? getScopedAdditionalModelOptions()
-      : []
-    const sourceOptions = activeOpenAIOptions.length > 0
-      ? activeOpenAIOptions
-      : scopedOptions
-    return [
-      getDefaultOptionForUser(fastMode),
-      ...mergeModelOptionsByNormalizedValue(
-        sourceOptions,
-        activeRouteCatalogOptions,
-      ),
-      ...inactiveProfileOptions,
-    ]
-  }
-
-  // PAYG 1P API: Default (Sonnet) + Sonnet 1M + Opus 4.8 + Opus 4.7 + Opus 4.6 + Opus 1M + Haiku
-  if (getAPIProvider() === 'firstParty' && isFirstPartyAnthropicBaseUrl()) {
-    const payg1POptions = [getDefaultOptionForUser(fastMode)]
-    if (checkSonnet1mAccess()) {
-      payg1POptions.push(getSonnet46_1MOption())
-    }
-    if (isOpus1mMergeEnabled()) {
-      payg1POptions.push(getMergedOpus1MOption(fastMode))
-    } else {
-      payg1POptions.push(getOpus48Option(fastMode))
-      payg1POptions.push(getOpus47Option(fastMode))
-      payg1POptions.push(getOpus46Option(fastMode))
-      if (checkOpus1mAccess()) {
-        payg1POptions.push(getOpus46_1MOption(fastMode))
-      }
-    }
-    payg1POptions.push(getHaiku45Option())
-    payg1POptions.push(...profileModelOptions)
-    payg1POptions.push(...inactiveProfileOptions)
-    return payg1POptions
-  }
-
-  // PAYG 3P: Default (Sonnet 4.5) + Sonnet (3P custom) or Sonnet 4.6/1M + Opus (3P custom) or Opus 4.1/Opus 4.6/Opus1M + Haiku + Opus 4.1
-  const payg3pOptions = [getDefaultOptionForUser(fastMode)]
-
-  // Add Codex models for openai and codex providers
-  if (getAPIProvider() === 'openai' || getAPIProvider() === 'codex') {
-    payg3pOptions.push(...getCodexModelOptions())
-  }
-
-  const customSonnet = getCustomSonnetOption()
-  if (customSonnet !== undefined) {
-    payg3pOptions.push(customSonnet)
-  } else {
-    // Add Sonnet 4.6 since Sonnet 4.5 is the default
-    payg3pOptions.push(getSonnet46Option())
-    if (checkSonnet1mAccess()) {
-      payg3pOptions.push(getSonnet46_1MOption())
-    }
-  }
-
-  const customOpus = getCustomOpusOption()
-  if (customOpus !== undefined) {
-    payg3pOptions.push(customOpus)
-  } else {
-    // Add Opus 4.1, Opus 4.7, Opus 4.6 and Opus 4.6 1M
-    // Opus 4.8 is intentionally omitted here until 3P rollout is active;
-    // getDefaultOpusModel() keeps non-first-party usage on Opus 4.7.
-    payg3pOptions.push(getOpus41Option()) // This is the default opus
-    payg3pOptions.push(getOpus47Option(fastMode))
-    payg3pOptions.push(getOpus46Option(fastMode))
-    if (checkOpus1mAccess()) {
-      payg3pOptions.push(getOpus46_1MOption(fastMode))
-    }
-  }
-  const customHaiku = getCustomHaikuOption()
-  if (customHaiku !== undefined) {
-    payg3pOptions.push(customHaiku)
-  } else {
-    payg3pOptions.push(getHaikuOption())
-  }
-  payg3pOptions.push(...profileModelOptions)
-  payg3pOptions.push(...inactiveProfileOptions)
-  return payg3pOptions
 }
 
 /**

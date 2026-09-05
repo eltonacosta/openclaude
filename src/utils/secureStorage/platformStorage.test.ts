@@ -152,6 +152,7 @@ describe("Secure Storage Platform Implementations", () => {
 
   describe("Config-Dir Isolation", () => {
     test("service name ignores CLAUDE_CONFIG_DIR", () => {
+      delete process.env.ORBITCODE_CONFIG_DIR;
       delete process.env.OPENCLAUDE_CONFIG_DIR;
       delete process.env.CLAUDE_CONFIG_DIR;
       const defaultName = getSecureStorageServiceName(CREDENTIALS_SERVICE_SUFFIX);
@@ -165,6 +166,7 @@ describe("Secure Storage Platform Implementations", () => {
     });
 
     test("service name changes with OPENCLAUDE_CONFIG_DIR", () => {
+      delete process.env.ORBITCODE_CONFIG_DIR;
       delete process.env.OPENCLAUDE_CONFIG_DIR;
       delete process.env.CLAUDE_CONFIG_DIR;
       const defaultName = getSecureStorageServiceName(CREDENTIALS_SERVICE_SUFFIX);
@@ -179,22 +181,24 @@ describe("Secure Storage Platform Implementations", () => {
     });
 
     test("service name stays default when OPENCLAUDE_CONFIG_DIR points at default config dir", () => {
+      delete process.env.ORBITCODE_CONFIG_DIR;
       delete process.env.OPENCLAUDE_CONFIG_DIR;
       delete process.env.CLAUDE_CONFIG_DIR;
       const defaultName = getSecureStorageServiceName(CREDENTIALS_SERVICE_SUFFIX);
 
-      process.env.OPENCLAUDE_CONFIG_DIR = join(homedir(), ".openclaude");
+      process.env.ORBITCODE_CONFIG_DIR = join(homedir(), ".orbitcode");
       const explicitDefaultName = getSecureStorageServiceName(CREDENTIALS_SERVICE_SUFFIX);
 
       expect(explicitDefaultName).toBe(defaultName);
     });
 
     test("service name stays default when OPENCLAUDE_CONFIG_DIR has a trailing separator", () => {
+      delete process.env.ORBITCODE_CONFIG_DIR;
       delete process.env.OPENCLAUDE_CONFIG_DIR;
       delete process.env.CLAUDE_CONFIG_DIR;
       const defaultName = getSecureStorageServiceName(CREDENTIALS_SERVICE_SUFFIX);
 
-      process.env.OPENCLAUDE_CONFIG_DIR = `${join(homedir(), ".openclaude")}/`;
+      process.env.ORBITCODE_CONFIG_DIR = `${join(homedir(), ".orbitcode")}/`;
       const explicitDefaultName = getSecureStorageServiceName(CREDENTIALS_SERVICE_SUFFIX);
 
       expect(explicitDefaultName).toBe(defaultName);

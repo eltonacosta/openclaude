@@ -82,7 +82,7 @@ export function getNativeInstallUnavailableFix(
     case 'local-config':
       return `Run ${getCliBinaryName()} update to refresh the install method, or update manually with: ${getNpmUpdateCommand()}`
     case 'local-overlap':
-      return `Use the local install at ~/.openclaude/local/${getCliBinaryName()}, remove it, or update the global npm package with: ${getNpmUpdateCommand()}`
+      return `Use the local install at ~/.orbitcode/local/${getCliBinaryName()}, remove it, or update the global npm package with: ${getNpmUpdateCommand()}`
     case 'global-permissions':
       return `Do one of: (1) Re-install node without sudo, or (2) Update manually with: ${getNpmUpdateCommand()}`
     case 'native-config':
@@ -550,13 +550,13 @@ async function detectConfigurationIssues(
         // Alias exists but points to invalid target
         warnings.push({
           issue: 'Local installation not accessible',
-          fix: `Alias exists but points to invalid target: ${existingAlias}. Update alias: alias ${getCliBinaryName()}="~/.openclaude/local/${getCliBinaryName()}"`,
+          fix: `Alias exists but points to invalid target: ${existingAlias}. Update alias: alias ${getCliBinaryName()}="~/.orbitcode/local/${getCliBinaryName()}"`,
         })
       } else {
         // No alias exists and not in PATH
         warnings.push({
           issue: 'Local installation not accessible',
-          fix: `Create alias: alias ${getCliBinaryName()}="~/.openclaude/local/${getCliBinaryName()}"`,
+          fix: `Create alias: alias ${getCliBinaryName()}="~/.orbitcode/local/${getCliBinaryName()}"`,
         })
       }
     }

@@ -2,7 +2,7 @@
  * Files are loaded in the following order:
  *
  * 1. Managed memory (eg. /etc/claude-code/CLAUDE.md) - Global instructions for all users
- * 2. User memory (~/.openclaude/CLAUDE.md) - Private global instructions for all projects
+ * 2. User memory (~/.orbitcode/CLAUDE.md) - Private global instructions for all projects
  * 3. Project memory (AGENTS.md or fallback CLAUDE.md, plus .openclaude/CLAUDE.md and .openclaude/rules/*.md in project roots) - Instructions checked into the codebase
  * 4. Local memory (CLAUDE.local.md in project roots) - Private project-specific instructions
  *
@@ -851,7 +851,7 @@ export const getMemoryFiles = memoize(
           includeExternalForUser, // User-scope external-includes gate
         )),
       )
-      // Process User ~/.openclaude/rules/*.md files
+      // Process User ~/.orbitcode/rules/*.md files
       const userClaudeRulesDir = getUserClaudeRulesDir()
       result.push(
         ...(await processMdRules({
