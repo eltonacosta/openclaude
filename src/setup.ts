@@ -28,6 +28,7 @@ import { clearMemoryFileCaches } from './utils/claudemd.js'
 import { getCurrentProjectConfig, getGlobalConfig } from './utils/config.js'
 import { loadOrbitConfig, applyOrbitConfigToEnv } from './utils/orbitConfig.js'
 import { ModelRegistry } from './utils/model/modelRegistry.js'
+import { getSettings_DEPRECATED, updateSettingsForSource } from './utils/settings/settings.js'
 import { logForDiagnosticsNoPII } from './utils/diagLogs.js'
 import { env } from './utils/env.js'
 import { envDynamic } from './utils/envDynamic.js'
@@ -94,6 +95,14 @@ export async function setup(
     // successful /discovery is available immediately on boot. The cache is
     // keyed to the configured router URL; a mismatch means no usable cache.
     ModelRegistry.loadFromCache(orbitConfig.api_url)
+
+    const settings = getSettings_DEPRECATED() || {}
+    const savedModel = typeof settings.model === 'string' ? settings.model : undefined
+    if (ModelRegistry.hasModels() && savedModel && !ModelRegistry.getModel(savedModel)) {
+      updateSettingsForSource('userSettings', {
+        model: ModelRegistry.getModels()[0]!.id,
+      })
+    }
   }
 
   // --bare / SIMPLE: skip UDS messaging server and teammate snapshot.
