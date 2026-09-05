@@ -53,7 +53,7 @@ function setupConsumerProject(name: string): string {
     ),
   )
 
-  // Simulate node_modules/@gitlawb/openclaude structure
+  // Simulate node_modules/@eltonacosta/openclaude structure
   const pkgDir = join(tmpDir, 'node_modules', '@gitlawb', 'openclaude')
   mkdirSync(pkgDir, { recursive: true })
   mkdirSync(join(pkgDir, 'src', 'entrypoints', 'sdk'), { recursive: true })
@@ -64,7 +64,7 @@ function setupConsumerProject(name: string): string {
     join(pkgDir, 'package.json'),
     JSON.stringify(
       {
-        name: '@gitlawb/openclaude',
+        name: '@eltonacosta/openclaude',
         version: '0.0.0-test',
         type: 'module',
         exports: {
@@ -139,7 +139,7 @@ describe('package consumer types', () => {
         `  QueryOptions,`,
         `  SDKSession,`,
         `  SDKSessionOptions,`,
-        `} from '@gitlawb/openclaude/sdk'`,
+        `} from '@eltonacosta/openclaude/sdk'`,
         ``,
         `// Use the types so they're not unused-imports-eliminated`,
         `type _Msg = SDKMessage`,
@@ -186,7 +186,7 @@ describe('package consumer types', () => {
     writeFileSync(
       join(tmpDir, 'consumer.ts'),
       [
-        `import type { SDKMessage, SDKUserMessage, SDKResultMessage } from '@gitlawb/openclaude/sdk'`,
+        `import type { SDKMessage, SDKUserMessage, SDKResultMessage } from '@eltonacosta/openclaude/sdk'`,
         ``,
         `// Discriminated union check — if types are broken, this won't compile`,
         `function handle(msg: SDKMessage) {`,
@@ -211,7 +211,7 @@ describe('package consumer types', () => {
     writeFileSync(
       join(tmpDir, 'consumer.ts'),
       [
-        `import type { SDKResultMessage } from '@gitlawb/openclaude/sdk'`,
+        `import type { SDKResultMessage } from '@eltonacosta/openclaude/sdk'`,
         ``,
         `// Result messages are populated from QueryEngine.totalUsage`,
         `// (initialized from EMPTY_USAGE), so the standard counters are`,
@@ -245,7 +245,7 @@ describe('package consumer types', () => {
     writeFileSync(
       join(tmpDir, 'consumer.ts'),
       [
-        `import { SDKRateLimitError } from '@gitlawb/openclaude/sdk'`,
+        `import { SDKRateLimitError } from '@eltonacosta/openclaude/sdk'`,
         ``,
         `// Constructor should accept (message?, resetsAt?, rateLimitType?)`,
         `const err = new SDKRateLimitError('rate limited', 12345, 'requests')`,
@@ -267,7 +267,7 @@ describe('package consumer types', () => {
     writeFileSync(
       join(tmpDir, 'consumer.ts'),
       [
-        `import type { SDKControlInitializeResponse, ModelInfo } from '@gitlawb/openclaude/sdk'`,
+        `import type { SDKControlInitializeResponse, ModelInfo } from '@eltonacosta/openclaude/sdk'`,
         ``,
         `const models: ModelInfo[] = [{`,
         `  value: 'claude-opus-4-6',`,

@@ -22,7 +22,7 @@ O npm clona o repositório, instala as dependências e roda o `prepare` (build a
 ### Via npm (registry oficial)
 
 ```bash
-npm install -g @gitlawb/openclaude@latest
+npm install -g @eltonacosta/openclaude@latest
 ```
 
 ### Via fonte (desenvolvimento)
