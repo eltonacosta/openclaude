@@ -76,6 +76,43 @@ describe('orbitDiscovery', () => {
     expect(models[0]?.id).toBe('oc/big-pickle')
   })
 
+  it('enriches router variants using the longest contained models.dev model name', async () => {
+    const mockFetch: FetchLike = async (input) => {
+      const url = String(input)
+      const payload = url.includes('models.dev')
+        ? {
+            'gemini-3.8-flash': {
+              id: 'gemini-3.8-flash',
+              reasoning: true,
+              tool_call: true,
+              limit: { context: 131072 },
+            },
+            flash: {
+              id: 'flash',
+              reasoning: false,
+              limit: { context: 4096 },
+            },
+          }
+        : { data: [{ id: 'agy/gemini-3.8-flash-high' }] }
+
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const result = await runDiscovery(
+      'https://ai.servhub.xyz/v1',
+      'sk-test',
+      { fetchFn: mockFetch },
+    )
+
+    expect(result[0]?.id).toBe('agy/gemini-3.8-flash-high')
+    expect(result[0]?.context_window).toBe(131072)
+    expect(result[0]?.supports_efforts).toBe(true)
+    expect(result[0]?.supports_tools).toBe(true)
+  })
+
   it('runs discovery, enriches exclusively router models, and updates ModelRegistry', async () => {
     const mockRouterResponse = {
       data: [

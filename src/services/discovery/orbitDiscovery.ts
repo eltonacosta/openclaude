@@ -169,6 +169,28 @@ function registerModelInIndex(
   }
 }
 
+function findDevModelInfo(
+  modelId: string,
+  catalog: Record<string, DevModelInfo>,
+): DevModelInfo | undefined {
+  const normalizedModelId = modelId.trim().toLowerCase()
+  const parsedName = normalizedModelId.split('/').pop() || normalizedModelId
+
+  const exactMatch = catalog[normalizedModelId] || catalog[parsedName]
+  if (exactMatch) {
+    return exactMatch
+  }
+
+  // Router IDs often add a provider prefix and a serving variant, such as
+  // "agy/gemini-3.8-flash-high" for the models.dev entry "gemini-3.8-flash".
+  // Prefer the longest contained catalog name so specific models win over
+  // shorter names such as "flash".
+  return Object.entries(catalog)
+    .filter(([catalogName]) => parsedName.includes(catalogName))
+    .sort(([left], [right]) => right.length - left.length)
+    .at(0)?.[1]
+}
+
 /**
  * Downloads and indexes the models.dev reference catalog.
  * Uses https://models.dev/models.json primarily (~297KB), falling back to api.json if needed.
@@ -238,11 +260,9 @@ export async function runDiscovery(
     const fullId = model.id
     const parsedName = fullId.split('/').pop() || fullId
 
-    // Lookup in catalog by parsed base name or full ID
-    const matchedDevModel =
-      devModelsCatalog[parsedName.toLowerCase()] ||
-      devModelsCatalog[fullId.toLowerCase()] ||
-      {}
+    // Match exact IDs first, then enrich router variants from the longest
+    // models.dev name contained in the router model name.
+    const matchedDevModel = findDevModelInfo(fullId, devModelsCatalog) ?? {}
 
     return {
       id: fullId, // Used in API inference requests
