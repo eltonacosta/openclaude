@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { memo, useMemo } from 'react';
-import { getKairosActive, getSdkBetas } from '../bootstrap/state.js';
+import { getLastRequestTokensPerSecond, getKairosActive, getSessionAverageTokensPerSecond, getSdkBetas } from '../bootstrap/state.js';
 import { getTotalCost } from '../cost-tracker.js';
 import { useMainLoopModel } from '../hooks/useMainLoopModel.js';
 import type { ReadonlySettings } from '../hooks/useSettings.js';
@@ -17,7 +17,7 @@ import { isFullscreenEnvEnabled } from '../utils/fullscreen.js';
 import { getRuntimeMainLoopModel, renderModelName } from '../utils/model/model.js';
 import type { Theme } from '../utils/theme.js';
 import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from '../utils/tokens.js';
-import { formatTokenCount } from '../utils/format.js';
+import { formatTokenCount, formatTokens } from '../utils/format.js';
 
 /**
  * Built-in status bar shown when the user has NOT configured a custom
@@ -55,6 +55,11 @@ export type BuiltinStatusData = {
   /** When true, token counts are transcript-based estimates (e.g. all-zero provider response). */
   contextIsEstimated?: boolean;
   costUSD: number;
+  /**
+   * Tokens-per-second speedometer: duration-weighted session average, falling
+   * back to the last completed request. Null before the first real sample.
+   */
+  tokensPerSecond: number | null;
   /** Worst rate-limit window, or null when no utilization data (API-key users). */
   rateLimit: {
     label: string;
@@ -100,11 +105,18 @@ export function buildBuiltinStatusSegments(data: BuiltinStatusData): StatusSegme
       shortText: `$${cost.toFixed(0)}`
     });
   }
+  if (data.tokensPerSecond !== null) {
+    segments.push({
+      key: 'tokensPerSecond',
+      priority: 3,
+      text: `${formatTokens(data.tokensPerSecond)} tok/s`
+    });
+  }
   if (data.rateLimit) {
     const pct = Math.round(data.rateLimit.usedPercent);
     segments.push({
       key: 'rateLimit',
-      priority: 3,
+      priority: 4,
       text: `${data.rateLimit.label} ${pct}%`,
       color: pct >= 85 ? 'error' : pct >= 60 ? 'warning' : undefined
     });
@@ -207,7 +219,11 @@ function BuiltinStatusLineInner({
       contextInputTokens: inputTokens,
       contextWindow: contextWindowSize,
       contextIsEstimated: currentUsage?.is_estimated,
-      costUSD: getTotalCost()
+      costUSD: getTotalCost(),
+      // Session average once a sample exists; the last completed request
+      // covers the gap right after the first turn. Pure in-process reads —
+      // the memo recomputes on lastAssistantMessageId flips.
+      tokensPerSecond: getSessionAverageTokensPerSecond() ?? getLastRequestTokensPerSecond()
     };
     // messagesRef is stable; lastAssistantMessageId is the messages-changed signal
     // eslint-disable-next-line react-hooks/exhaustive-deps

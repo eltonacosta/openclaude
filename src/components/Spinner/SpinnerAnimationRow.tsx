@@ -5,7 +5,8 @@ import { useMemo, useRef } from 'react';
 import { stringWidth } from '../../ink/stringWidth.js';
 import { Box, Text, useAnimationFrame, useTheme } from '../../ink.js';
 import type { InProcessTeammateTaskState } from '../../tasks/InProcessTeammateTask/types.js';
-import { formatDuration, formatNumber } from '../../utils/format.js';
+import { getLiveTokensPerSecond, getLiveTokensPerSecondIsEstimated } from '../../bootstrap/state.js';
+import { formatDuration, formatNumber, formatTokens } from '../../utils/format.js';
 import { toInkColor } from '../../utils/ink.js';
 import { getTheme, type Theme } from '../../utils/theme.js';
 import { Byline } from '../design-system/Byline.js';
@@ -186,6 +187,14 @@ export function SpinnerAnimationRow({
   const tokenCount = formatNumber(totalTokens);
   const tokensText = `${tokenCount} tokens`;
   const tokensWidth = stringWidth(tokensText);
+
+  // === Live tokens-per-second speedometer ===
+  // Read straight from STATE each frame — the 50ms useAnimationFrame loop
+  // already re-renders us, so no subscription or extra timer is needed.
+  // "~" prefix marks the chars-based estimate (usage not yet reported).
+  const liveTps = getLiveTokensPerSecond();
+  const tpsText = liveTps !== null ? `${getLiveTokensPerSecondIsEstimated() ? '~' : ''}${formatTokens(liveTps)} tok/s` : null;
+  const tpsWidth = tpsText !== null ? stringWidth(tpsText) : 0;
 
   // === Thinking text (may shrink to fit) ===
   let thinkingText = thinkingStatus === 'thinking' ? `thinking${effortSuffix}` : typeof thinkingStatus === 'number' ? `thought for ${Math.max(1, Math.round(thinkingStatus / 1000))}s` : null;
@@ -639,12 +648,19 @@ export function SpinnerAnimationRow({
   // Apply in both shimmer and reduced-motion arms so teammate bare status is
   // always "(thinking)", not a bare word jammed after the verb.
   const thinkingDisplay = thinkingText ? bareThinkingOnly ? `(${thinkingText})` : thinkingText : null;
+  // Live tok/s sits just below tokens in priority: only shown when the token
+  // count is already visible and the extra segment still fits in bare chrome,
+  // so it drops first on narrow terminals before any higher-value status.
+  const tpsUsedBefore = (showSuffix ? suffixTextWidth + sep : 0) + (showTimer ? timerWidth + sep : 0) + (showTokens ? tokensWidth + sep : 0) + (showThinking && thinkingDisplay ? thinkingWidthValue + sep : 0);
+  const showTps = tpsText !== null && showTokens && physicalBareBudget >= tpsUsedBefore + tpsWidth;
   const parts = [...(showSuffix && spinnerSuffix ? [<Text dimColor key="suffix">
             {spinnerSuffix}
           </Text>] : []), ...(showTimer ? [<Text dimColor key="elapsedTime">
             {timerText}
           </Text>] : []), ...(showTokens ? [<Text dimColor key="tokens">
             {tokensText}
+          </Text>] : []), ...(showTps ? [<Text dimColor key="tps">
+            {tpsText}
           </Text>] : []), ...(showThinking && thinkingDisplay ? [thinkingStatus === 'thinking' && !reducedMotion ? <Text key="thinking" color={thinkingShimmerColor}>
               {thinkingDisplay}
             </Text> : <Text dimColor key="thinking">

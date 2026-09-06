@@ -71,6 +71,16 @@ export type StatusLineCommandInput = {
     remaining_percentage: number | null
   }
   exceeds_200k_tokens: boolean
+  /**
+   * Tokens-per-second speedometer. `tokens_per_second` is the last completed
+   * request; `avg_tokens_per_second` is the duration-weighted session
+   * average. Both null before the first real sample.
+   * `tokens_per_second_is_estimated` reflects the live value's chars-based
+   * fallback flag.
+   */
+  tokens_per_second?: number | null
+  avg_tokens_per_second?: number | null
+  tokens_per_second_is_estimated?: boolean
   rate_limits?: {
     five_hour?: StatusLineRateLimitWindow
     seven_day?: StatusLineRateLimitWindow

@@ -13,6 +13,7 @@ const fullData: BuiltinStatusData = {
   contextInputTokens: 74000,
   contextWindow: 200000,
   costUSD: 1.234,
+  tokensPerSecond: null,
   rateLimit: { label: '5h', usedPercent: 42 },
 }
 
@@ -50,6 +51,40 @@ describe('buildBuiltinStatusSegments', () => {
       rateLimit: null,
     })
     expect(segments.map(s => s.key)).toEqual(['model', 'context'])
+  })
+
+  it('appends the tok/s segment between cost and rate limit', () => {
+    const segments = buildBuiltinStatusSegments({
+      ...fullData,
+      tokensPerSecond: 1234.5,
+    })
+    expect(segments.map(s => s.key)).toEqual([
+      'model',
+      'context',
+      'cost',
+      'tokensPerSecond',
+      'rateLimit',
+    ])
+    expect(segments.find(s => s.key === 'tokensPerSecond')?.text).toBe(
+      '1.2k tok/s',
+    )
+  })
+
+  it('formats sub-k tok/s without decimals and omits the segment when null', () => {
+    const segments = buildBuiltinStatusSegments({
+      ...fullData,
+      tokensPerSecond: 87,
+    })
+    expect(segments.find(s => s.key === 'tokensPerSecond')?.text).toBe(
+      '87 tok/s',
+    )
+
+    const without = buildBuiltinStatusSegments({
+      ...fullData,
+      tokensPerSecond: null,
+    })
+    expect(segments.find(s => s.key === 'tokensPerSecond')).toBeDefined()
+    expect(without.find(s => s.key === 'tokensPerSecond')).toBeUndefined()
   })
 
   it('colors context by usage thresholds', () => {

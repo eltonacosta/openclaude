@@ -17,6 +17,7 @@ import type { SettingSource } from 'src/utils/settings/constants.js'
 import { resetSettingsCache } from 'src/utils/settings/settingsCache.js'
 import type { PluginHookMatcher } from 'src/utils/settings/types.js'
 import { createSignal } from 'src/utils/signal.js'
+import { computeSessionAverageTps } from 'src/utils/tokensPerSecond.js'
 
 // Union type for registered hooks - can be SDK callbacks or native plugin hooks
 type RegisteredHookMatcher = HookCallbackMatcher | PluginHookMatcher
@@ -48,6 +49,13 @@ type State = {
   totalCostUSD: number
   totalAPIDuration: number
   totalAPIDurationWithoutRetries: number
+  // Tokens-per-second speedometer: live streaming value, last completed
+  // request, and weighted session aggregate (see utils/tokensPerSecond.ts).
+  liveTokensPerSecond: number | null
+  liveTpsIsEstimated: boolean
+  lastRequestTokensPerSecond: number | null
+  sessionTpsTokens: number
+  sessionTpsDurationMs: number
   totalToolDuration: number
   turnHookDurationMs: number
   turnToolDurationMs: number
@@ -266,6 +274,11 @@ function getInitialState(): State {
     totalCostUSD: 0,
     totalAPIDuration: 0,
     totalAPIDurationWithoutRetries: 0,
+    liveTokensPerSecond: null,
+    liveTpsIsEstimated: false,
+    lastRequestTokensPerSecond: null,
+    sessionTpsTokens: 0,
+    sessionTpsDurationMs: 0,
     totalToolDuration: 0,
     turnHookDurationMs: 0,
     turnToolDurationMs: 0,
@@ -599,6 +612,7 @@ export function resetTotalDurationStateAndCost_FOR_TESTS_ONLY(): void {
   STATE.totalAPIDuration = 0
   STATE.totalAPIDurationWithoutRetries = 0
   STATE.totalCostUSD = 0
+  resetTokensPerSecondState()
 }
 
 export function addToTotalCostState(
@@ -766,6 +780,61 @@ export function getTotalCacheCreationInputTokens(): number {
 
 export function getTotalWebSearchRequests(): number {
   return sumBy(Object.values(STATE.modelUsage), 'webSearchRequests')
+}
+
+// Tokens-per-second speedometer state (live streaming value + session
+// aggregate). Session average is weighted by per-request streaming duration
+// rather than totalAPIDuration, which would be dragged down by retries and
+// non-generation API time.
+
+export function setLiveTokensPerSecond(
+  tokensPerSecond: number,
+  isEstimated = false,
+): void {
+  STATE.liveTokensPerSecond = tokensPerSecond
+  STATE.liveTpsIsEstimated = isEstimated
+}
+
+export function clearLiveTokensPerSecond(): void {
+  STATE.liveTokensPerSecond = null
+  STATE.liveTpsIsEstimated = false
+}
+
+export function getLiveTokensPerSecond(): number | null {
+  return STATE.liveTokensPerSecond
+}
+
+export function getLiveTokensPerSecondIsEstimated(): boolean {
+  return STATE.liveTpsIsEstimated
+}
+
+export function setLastRequestTokensPerSecond(tokensPerSecond: number): void {
+  STATE.lastRequestTokensPerSecond = tokensPerSecond
+}
+
+export function getLastRequestTokensPerSecond(): number | null {
+  return STATE.lastRequestTokensPerSecond
+}
+
+export function addSessionTpsSample(tokens: number, durationMs: number): void {
+  if (tokens <= 0 || durationMs <= 0) return
+  STATE.sessionTpsTokens += tokens
+  STATE.sessionTpsDurationMs += durationMs
+}
+
+export function getSessionAverageTokensPerSecond(): number | null {
+  return computeSessionAverageTps(
+    STATE.sessionTpsTokens,
+    STATE.sessionTpsDurationMs,
+  )
+}
+
+function resetTokensPerSecondState(): void {
+  STATE.liveTokensPerSecond = null
+  STATE.liveTpsIsEstimated = false
+  STATE.lastRequestTokensPerSecond = null
+  STATE.sessionTpsTokens = 0
+  STATE.sessionTpsDurationMs = 0
 }
 
 let outputTokensAtTurnStart = 0
@@ -938,6 +1007,7 @@ export function resetCostState(): void {
   STATE.hasUnknownModelCost = false
   STATE.modelUsage = emptyModelUsage()
   STATE.promptId = null
+  resetTokensPerSecondState()
 }
 
 /**

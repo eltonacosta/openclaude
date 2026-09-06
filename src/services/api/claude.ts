@@ -123,7 +123,11 @@ import {
   APIUserAbortError,
 } from '@anthropic-ai/sdk/error'
 import {
+  addSessionTpsSample,
+  clearLiveTokensPerSecond,
   getAfkModeHeaderLatched,
+  setLastRequestTokensPerSecond,
+  setLiveTokensPerSecond,
   getCacheEditingHeaderLatched,
   getFastModeHeaderLatched,
   getLastApiCompletionTimestamp,
@@ -140,6 +144,7 @@ import {
   setPromptCache1hEligible,
   setThinkingClearLatched,
 } from 'src/bootstrap/state.js'
+import { computeTokensPerSecond, estimateTokensFromText } from 'src/utils/tokensPerSecond.js'
 import {
   AFK_MODE_BETA_HEADER,
   CONTEXT_1M_BETA_HEADER,
@@ -1964,6 +1969,12 @@ async function* queryModel(
 
   const newMessages: AssistantMessage[] = []
   let ttftMs = 0
+  // Tokens-per-second speedometer: anchored at the first content token so
+  // retries and pre-stream latency don't deflate the rate. See
+  // utils/tokensPerSecond.ts for the pure math.
+  const MIN_TPS_ELAPSED_MS = 250
+  let firstContentTokenAt: number | null = null
+  let generatedChars = 0
   let partialMessage: BetaMessage | undefined = undefined
   const contentBlocks: (BetaContentBlock | ConnectorTextBlock)[] = []
   let usage: NonNullableUsage = EMPTY_USAGE
@@ -2569,6 +2580,35 @@ async function* queryModel(
                   break
               }
             }
+            // Tokens-per-second speedometer: anchor timing at the first
+            // content delta and accumulate raw chars for the estimated
+            // fallback (providers that only report usage at stream end).
+            firstContentTokenAt ??= Date.now()
+            const deltaText =
+              'text' in delta
+                ? delta.text
+                : 'thinking' in delta
+                  ? delta.thinking
+                  : 'partial_json' in delta
+                    ? delta.partial_json
+                    : 'connector_text' in delta
+                      ? delta.connector_text
+                      : undefined
+            if (typeof deltaText === 'string' && deltaText.length > 0) {
+              generatedChars += deltaText.length
+              if (firstContentTokenAt !== null) {
+                const elapsedMs = Date.now() - firstContentTokenAt
+                if (elapsedMs > MIN_TPS_ELAPSED_MS) {
+                  const tps = computeTokensPerSecond(
+                    estimateTokensFromText(generatedChars),
+                    elapsedMs,
+                  )
+                  if (tps !== null) {
+                    setLiveTokensPerSecond(tps, true)
+                  }
+                }
+              }
+            }
             // Capture research from content_block_delta if available (internal only).
             // Always overwrite with the latest value.
             if (process.env.USER_TYPE === 'ant' && 'research' in part) {
@@ -2620,6 +2660,21 @@ async function* queryModel(
           }
           case 'message_delta': {
             usage = updateUsage(usage, part.usage)
+            // Exact tok/s from cumulative output_tokens when the provider
+            // reports usage mid-stream; snaps the live value off the
+            // chars-based estimate.
+            if (firstContentTokenAt !== null && usage.output_tokens > 0) {
+              const elapsedMs = Date.now() - firstContentTokenAt
+              if (elapsedMs > MIN_TPS_ELAPSED_MS) {
+                const tps = computeTokensPerSecond(
+                  usage.output_tokens,
+                  elapsedMs,
+                )
+                if (tps !== null) {
+                  setLiveTokensPerSecond(tps, false)
+                }
+              }
+            }
             // Capture research from message_delta if available (internal only).
             // Always overwrite with the latest value. Also write back to
             // already-yielded messages since message_delta arrives after
@@ -3369,6 +3424,24 @@ async function* queryModel(
         fallbackUsage,
         options.model,
       )
+    }
+
+    // Tokens-per-second bookkeeping. The live value must clear on every exit
+    // path so it can't outlive the turn; the last-request/session sample only
+    // records honest streaming completions with real output tokens (the
+    // non-streaming fallback has no measurable generation duration).
+    clearLiveTokensPerSecond()
+    if (
+      !didFallBackToNonStreaming &&
+      firstContentTokenAt !== null &&
+      usage.output_tokens > 0
+    ) {
+      const elapsedMs = Date.now() - firstContentTokenAt
+      const tps = computeTokensPerSecond(usage.output_tokens, elapsedMs)
+      if (tps !== null) {
+        setLastRequestTokensPerSecond(tps)
+        addSessionTpsSample(usage.output_tokens, elapsedMs)
+      }
     }
   }
 

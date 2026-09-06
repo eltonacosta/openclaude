@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
 import { useAppState, useSetAppState } from 'src/state/AppState.js';
 import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js';
-import { getIsRemoteMode, getKairosActive, getMainThreadAgentType, getOriginalCwd, getSdkBetas, getSessionId } from '../bootstrap/state.js';
+import { getIsRemoteMode, getKairosActive, getLastRequestTokensPerSecond, getLiveTokensPerSecond, getLiveTokensPerSecondIsEstimated, getMainThreadAgentType, getOriginalCwd, getSessionAverageTokensPerSecond, getSdkBetas, getSessionId } from '../bootstrap/state.js';
 import { DEFAULT_OUTPUT_STYLE_NAME } from '../constants/outputStyles.js';
 import { useNotifications } from '../context/notifications.js';
 import { getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalInputTokens, getTotalLinesAdded, getTotalLinesRemoved, getTotalOutputTokens } from '../cost-tracker.js';
@@ -160,6 +160,15 @@ export function buildStatusLineCommandInput(permissionMode: PermissionMode, exce
       remaining_percentage: contextPercentages.remaining
     },
     exceeds_200k_tokens: exceeds200kTokens,
+    ...(getLastRequestTokensPerSecond() !== null && {
+      tokens_per_second: getLastRequestTokensPerSecond()
+    }),
+    ...(getSessionAverageTokensPerSecond() !== null && {
+      avg_tokens_per_second: getSessionAverageTokensPerSecond()
+    }),
+    ...((getLiveTokensPerSecondIsEstimated() && getLiveTokensPerSecond() !== null) && {
+      tokens_per_second_is_estimated: true
+    }),
     ...((rateLimits.five_hour || rateLimits.seven_day) && {
       rate_limits: rateLimits
     }),

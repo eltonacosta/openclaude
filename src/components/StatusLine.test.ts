@@ -1,4 +1,10 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
+import {
+  addSessionTpsSample,
+  resetStateForTests as resetBootstrapStateForTests,
+  setLastRequestTokensPerSecond,
+  setLiveTokensPerSecond,
+} from '../bootstrap/state.js'
 import { resetStateForTests } from '../cost-tracker.js'
 import { getUnreportedSessionUsage } from '../utils/tokens.js'
 import {
@@ -127,5 +133,48 @@ describe('buildStatusLineCommandInput', () => {
         is_estimated: true,
       },
     })
+  })
+})
+
+describe('buildStatusLineCommandInput tok/s fields', () => {
+  beforeEach(() => {
+    process.env.NODE_ENV = 'test'
+    resetBootstrapStateForTests()
+  })
+
+  it('emits tok/s fields when samples exist and omits them when empty', () => {
+    setLastRequestTokensPerSecond(123.4)
+    addSessionTpsSample(500, 4000) // 125 tok/s duration-weighted average
+    setLiveTokensPerSecond(87, true)
+
+    const messages = [userMessage('hi'), assistantMessage('hey')]
+    const input = buildStatusLineCommandInput(
+      'default',
+      false,
+      {},
+      messages,
+      [],
+      'mimo-v2.5-pro',
+    )
+
+    expect(input.tokens_per_second).toBeCloseTo(123.4)
+    expect(input.avg_tokens_per_second).toBe(125)
+    expect(input.tokens_per_second_is_estimated).toBe(true)
+  })
+
+  it('omits all tok/s fields before the first sample', () => {
+    const messages = [userMessage('hi'), assistantMessage('hey')]
+    const input = buildStatusLineCommandInput(
+      'default',
+      false,
+      {},
+      messages,
+      [],
+      'mimo-v2.5-pro',
+    )
+
+    expect(input.tokens_per_second).toBeUndefined()
+    expect(input.avg_tokens_per_second).toBeUndefined()
+    expect(input.tokens_per_second_is_estimated).toBeUndefined()
   })
 })
