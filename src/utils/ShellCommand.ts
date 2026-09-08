@@ -1,4 +1,5 @@
 import type { ChildProcess } from 'child_process'
+import { spawn } from 'child_process'
 import { stat } from 'fs/promises'
 import type { Readable } from 'stream'
 import treeKill from 'tree-kill'
@@ -54,6 +55,8 @@ export type ShellCommand = {
   result: Promise<ExecResult>
   kill: () => void
   status: 'running' | 'backgrounded' | 'completed' | 'killed'
+  /** OS pid of the spawned shell, or undefined before spawn / after cleanup. */
+  pid?: number | undefined
   /**
    * Cleans up stream resources (event listeners).
    * Should be called after the command completes or is killed to prevent memory leaks.
@@ -213,6 +216,11 @@ class ShellCommandImpl implements ShellCommand {
 
   get status(): 'running' | 'backgrounded' | 'completed' | 'killed' {
     return this.#status
+  }
+
+  /** OS pid of the spawned shell, or undefined before spawn / after cleanup. */
+  get pid(): number | undefined {
+    return this.#childProcess?.pid
   }
 
   #abortHandler(): void {
@@ -394,12 +402,43 @@ class ShellCommandImpl implements ShellCommand {
     }
   }
 
+  /**
+   * Tree-kills the shell and its descendants. On win32, taskkill /T /F walks
+   * the live process tree directly (the shell may not be a job/group leader
+   * there), with treeKill as fallback. On POSIX, detached:true makes the
+   * shell a process-group leader, so killing -pgid reaps re-parented
+   * grandchildren that tree-kill by pid chain would miss; falls back to
+   * treeKill when the group signal fails (ESRCH/EPERM).
+   */
+  #hardKillTree(): void {
+    const pid = this.#childProcess.pid
+    if (!pid) return
+    if (process.platform === 'win32') {
+      try {
+        const killer = spawn('taskkill', ['/pid', String(pid), '/T', '/F'], {
+          windowsHide: true,
+          stdio: 'ignore',
+        })
+        killer.unref()
+        return
+      } catch {
+        // fall through to treeKill
+      }
+    } else {
+      try {
+        process.kill(-pid, 'SIGKILL')
+        return
+      } catch {
+        // Group may not exist (ESRCH) or permission denied — fall back.
+      }
+    }
+    treeKill(pid, 'SIGKILL')
+  }
+
   #doKill(code?: number): void {
     this.#status = 'killed'
     this.#exitSignal = code === SIGTERM ? 'SIGTERM' : 'SIGKILL'
-    if (this.#childProcess.pid) {
-      treeKill(this.#childProcess.pid, 'SIGKILL')
-    }
+    this.#hardKillTree()
     this.#resolveExitCode(code ?? SIGKILL)
   }
 

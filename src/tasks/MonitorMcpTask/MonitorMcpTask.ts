@@ -103,7 +103,7 @@ export function killMonitorMcpTasksForAgent(
       logForDebugging(
         `killMonitorMcpTasksForAgent: killing monitor shell task ${taskId} (agent ${agentId} exiting)`,
       )
-      killTask(taskId, setAppState)
+      void killTask(taskId, setAppState)
     }
   }
 

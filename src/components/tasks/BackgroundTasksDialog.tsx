@@ -20,6 +20,10 @@ import type { LocalWorkflowTaskState } from 'src/tasks/LocalWorkflowTask/LocalWo
 import type { MonitorMcpTaskState } from 'src/tasks/MonitorMcpTask/MonitorMcpTask.js';
 import { RemoteAgentTask, type RemoteAgentTaskState } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/tasks/types.js';
+import { killOrphanProcess } from 'src/utils/task/orphanKill.js';
+import { getOrphanSuspects } from 'src/utils/task/spawnLedger.js';
+import type { ProcessInfo } from 'src/utils/processCensus.js';
+import { formatFileSize } from 'src/utils/format.js';
 import type { DeepImmutable } from 'src/types/utils.js';
 import { intersperse } from 'src/utils/array.js';
 import { TEAM_LEAD_NAME } from 'src/utils/swarm/constants.js';
@@ -41,6 +45,7 @@ import { DreamDetailDialog } from './DreamDetailDialog.js';
 import { InProcessTeammateDetailDialog } from './InProcessTeammateDetailDialog.js';
 import { RemoteSessionDetailDialog } from './RemoteSessionDetailDialog.js';
 import { ShellDetailDialog } from './ShellDetailDialog.js';
+import { OrphanItem, ShellProcSummary, ShellDescendants, TaskCensusContext, useTaskCensus } from './taskCensus.js';
 type ViewState = {
   mode: 'list';
 } | {
@@ -101,6 +106,14 @@ type ListItem = {
   type: 'leader';
   label: string;
   status: 'running';
+} | {
+  id: string;
+  type: 'orphan';
+  label: string;
+  status: 'orphaned';
+  orphan: ProcessInfo;
+  sourceCommand: string;
+  sourceTaskId: string;
 };
 
 // WORKFLOW_SCRIPTS is internal-only (build_flags.yaml). Static imports would leak
@@ -163,6 +176,17 @@ export function BackgroundTasksDialog({
     };
   });
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  // Bumped after orphan kill attempts so the ledger-derived orphan section
+  // recomputes (the ledger lives outside AppState, so it is not reactive).
+  const [orphanVersion, setOrphanVersion] = useState<number>(0);
+  const [orphanFeedback, setOrphanFeedback] = useState<string | null>(null);
+  // Repoll the orphan ledger while the dialog is open so orphans discovered by
+  // the watchdog appear without closing/reopening /tasks.
+  const [orphanTick, setOrphanTick] = useState<number>(0);
+  useEffect(() => {
+    const timer = setInterval(() => setOrphanTick(v => v + 1), 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Register as modal overlay so parent Chat keybindings (up/down for history)
   // are deactivated while this dialog is open
@@ -177,6 +201,7 @@ export function BackgroundTasksDialog({
     workflowTasks,
     mcpMonitors,
     dreamTasks: dreamTasks_0,
+    orphanItems,
     allSelectableItems
   } = useMemo(() => {
     // Filter to only show running/pending background tasks, matching the status bar count
@@ -207,8 +232,20 @@ export function BackgroundTasksDialog({
       label: `@${TEAM_LEAD_NAME}`,
       status: 'running'
     }] : [];
+    // Orphaned processes recorded by the kill-verification path — listed for
+    // manual kill, never auto-killed (see killTree.ts / spawnLedger.ts).
+    const orphanItems: Extract<ListItem, { type: 'orphan'; }>[] = getOrphanSuspects().map(s => ({
+      id: `orphan-${s.orphan.pid}`,
+      type: 'orphan',
+      label: `${s.orphan.name} (pid ${s.orphan.pid})`,
+      status: 'orphaned',
+      orphan: s.orphan,
+      sourceCommand: s.entry.command,
+      sourceTaskId: s.entry.taskId
+    }));
     return {
       bashTasks: bash,
+      orphanItems,
       remoteSessions: remote,
       agentTasks: agent,
       workflowTasks: workflows,
@@ -218,10 +255,24 @@ export function BackgroundTasksDialog({
       // Order MUST match JSX render order (teammates \u2192 bash \u2192 monitorMcp \u2192
       // remote \u2192 agent \u2192 workflows \u2192 dream) so \u2193/\u2191 navigation moves the cursor
       // visually downward.
-      allSelectableItems: [...leaderItem, ...teammates, ...bash, ...monitorMcp, ...remote, ...agent, ...workflows, ...dreamTasks]
+      allSelectableItems: [...leaderItem, ...teammates, ...bash, ...monitorMcp, ...remote, ...agent, ...workflows, ...dreamTasks, ...orphanItems]
     };
-  }, [typedTasks, foregroundedTaskId, showSpinnerTree]);
+  }, [typedTasks, foregroundedTaskId, showSpinnerTree, orphanVersion, orphanTick]);
   const currentSelection = allSelectableItems[selectedIndex] ?? null;
+
+  // Dialog-local process census: polled every 5s while the dialog is open and
+  // at least one shell task is running. Powers the per-row procs/RAM summary
+  // and the shell detail descendant list.
+  const runningShellPids: number[] = [];
+  for (const bashItem of bashTasks) {
+    if (bashItem.type === 'local_bash' && bashItem.status === 'running') {
+      const shellPid = bashItem.task.shellCommand?.pid;
+      if (typeof shellPid === 'number') {
+        runningShellPids.push(shellPid);
+      }
+    }
+  }
+  const { table: censusTable } = useTaskCensus(runningShellPids.length > 0);
 
   // Use configurable keybindings for standard navigation and confirm/cancel.
   // confirm:no is handled by Dialog's onCancel prop.
@@ -236,6 +287,9 @@ export function BackgroundTasksDialog({
           onDone('Viewing leader', {
             display: 'system'
           });
+        } else if (current.type === 'orphan') {
+          // Orphans have no task registry entry — show their details inline.
+          setOrphanFeedback(`${current.orphan.name} (pid ${current.orphan.pid})${current.orphan.memoryBytes ? ` · ${formatFileSize(current.orphan.memoryBytes)}` : ''}${current.orphan.commandLine ? ` · ${current.orphan.commandLine}` : ''} — orphaned from "${current.sourceCommand}" (${current.sourceTaskId}). Press x to kill.`);
         } else {
           setViewState({
             mode: 'detail',
@@ -280,6 +334,8 @@ export function BackgroundTasksDialog({
         killMonitorMcp(currentSelection_0.id, setAppState);
       } else if (currentSelection_0.type === 'dream' && currentSelection_0.status === 'running') {
         void killDreamTask(currentSelection_0.id);
+      } else if (currentSelection_0.type === 'orphan') {
+        void killOrphanItem(currentSelection_0);
       } else if (currentSelection_0.type === 'remote_agent' && currentSelection_0.status === 'running') {
         if (currentSelection_0.task.isUltraplan) {
           void stopUltraplan(currentSelection_0.id, currentSelection_0.task.sessionId, setAppState);
@@ -318,6 +374,28 @@ export function BackgroundTasksDialog({
   }
   async function killRemoteAgentTask(taskId_3: string): Promise<void> {
     await RemoteAgentTask.kill(taskId_3, setAppState);
+  }
+
+  /**
+   * Manual orphan kill with PID-reuse protection: the process name is
+   * re-checked against the captured name before killing; the ledger entry is
+   * cleared once the re-census confirms death.
+   */
+  async function killOrphanItem(item: Extract<ListItem, {
+    type: 'orphan';
+  }>): Promise<void> {
+    setOrphanFeedback(`Killing ${item.orphan.name} (pid ${item.orphan.pid})…`);
+    const result = await killOrphanProcess(item.orphan.pid, item.orphan.name);
+    if (result === 'killed') {
+      setOrphanFeedback(`Killed ${item.orphan.name} (pid ${item.orphan.pid})`);
+    } else if (result === 'already-gone') {
+      setOrphanFeedback(`${item.orphan.name} (pid ${item.orphan.pid}) is no longer running`);
+    } else if (result === 'name-mismatch') {
+      setOrphanFeedback(`Skipped pid ${item.orphan.pid} — the process identity no longer matches, refusing to kill`);
+    } else {
+      setOrphanFeedback(`Failed to kill ${item.orphan.name} (pid ${item.orphan.pid}) — kill it manually via Task Manager / kill -9`);
+    }
+    setOrphanVersion(v => v + 1);
   }
 
   // Wrap onDone in useEffectEvent to get a stable reference that always calls
@@ -375,7 +453,7 @@ export function BackgroundTasksDialog({
     // Detail mode - show appropriate detail dialog
     switch (task_0.type) {
       case 'local_bash':
-        return <ShellDetailDialog shell={task_0} onDone={onDone} onKillShell={() => void killShellTask(task_0.id)} onBack={goBackToList} key={`shell-${task_0.id}`} />;
+        return <TaskCensusContext.Provider value={censusTable}><ShellDetailDialog shell={task_0} onDone={onDone} onKillShell={() => void killShellTask(task_0.id)} onBack={goBackToList} key={`shell-${task_0.id}`} /></TaskCensusContext.Provider>;
       case 'local_agent':
         return <AsyncAgentDetailDialog agent={task_0} onDone={onDone} onKillAgent={() => void killAgentTask(task_0.id)} onBack={goBackToList} key={`agent-${task_0.id}`} />;
       case 'remote_agent':
@@ -412,7 +490,7 @@ export function BackgroundTasksDialog({
               {runningAgentCount}{' '}
               {runningAgentCount !== 1 ? 'active agents' : 'active agent'}
             </Text>] : [])], index => <Text key={`separator-${index}`}> · </Text>);
-  const actions = [<KeyboardShortcutHint key="upDown" shortcut="↑/↓" action="select" />, <KeyboardShortcutHint key="enter" shortcut="Enter" action="view" />, ...(currentSelection?.type === 'in_process_teammate' && currentSelection.status === 'running' ? [<KeyboardShortcutHint key="foreground" shortcut="f" action="foreground" />] : []), ...((currentSelection?.type === 'local_bash' || currentSelection?.type === 'local_agent' || currentSelection?.type === 'in_process_teammate' || currentSelection?.type === 'local_workflow' || currentSelection?.type === 'monitor_mcp' || currentSelection?.type === 'dream' || currentSelection?.type === 'remote_agent') && currentSelection.status === 'running' ? [<KeyboardShortcutHint key="kill" shortcut="x" action="stop" />] : []), ...(agentTasks.some(t => t.status === 'running') ? [<KeyboardShortcutHint key="kill-all" shortcut={killAgentsShortcut} action="stop all agents" />] : []), <KeyboardShortcutHint key="esc" shortcut="←/Esc" action="close" />];
+  const actions = [<KeyboardShortcutHint key="upDown" shortcut="↑/↓" action="select" />, <KeyboardShortcutHint key="enter" shortcut="Enter" action="view" />, ...(currentSelection?.type === 'in_process_teammate' && currentSelection.status === 'running' ? [<KeyboardShortcutHint key="foreground" shortcut="f" action="foreground" />] : []), ...((currentSelection?.type === 'local_bash' || currentSelection?.type === 'local_agent' || currentSelection?.type === 'in_process_teammate' || currentSelection?.type === 'local_workflow' || currentSelection?.type === 'monitor_mcp' || currentSelection?.type === 'dream' || currentSelection?.type === 'remote_agent') && currentSelection.status === 'running' ? [<KeyboardShortcutHint key="kill" shortcut="x" action="stop" />] : []), ...(currentSelection?.type === 'orphan' ? [<KeyboardShortcutHint key="kill-orphan" shortcut="x" action="kill orphan" />] : []), ...(agentTasks.some(t => t.status === 'running') ? [<KeyboardShortcutHint key="kill-all" shortcut={killAgentsShortcut} action="stop all agents" />] : []), <KeyboardShortcutHint key="esc" shortcut="←/Esc" action="close" />];
   const handleCancel = () => onDone('Background tasks dialog dismissed', {
     display: 'system'
   });
@@ -422,7 +500,7 @@ export function BackgroundTasksDialog({
     }
     return <Byline>{actions}</Byline>;
   }
-  return <Box flexDirection="column" tabIndex={0} autoFocus onKeyDown={handleKeyDown}>
+  return <TaskCensusContext.Provider value={censusTable}><Box flexDirection="column" tabIndex={0} autoFocus onKeyDown={handleKeyDown}>
       <Dialog title="Background tasks" subtitle={<>{subtitle}</>} onCancel={handleCancel} color="background" inputGuide={renderInputGuide}>
         {allSelectableItems.length === 0 ? <Text dimColor>No tasks currently running</Text> : <Box flexDirection="column">
             {teammateTasks.length > 0 && <Box flexDirection="column">
@@ -486,9 +564,19 @@ export function BackgroundTasksDialog({
                   {dreamTasks_0.map(item_11 => <Item key={item_11.id} item={item_11} isSelected={item_11.id === currentSelection?.id} />)}
                 </Box>
               </Box>}
+
+            {orphanItems.length > 0 && <Box flexDirection="column" marginTop={1}>
+                <Text dimColor>
+                  <Text bold>{'  '}Orphaned processes</Text> ({orphanItems.length}) — survivors of killed shells
+                </Text>
+                <Box flexDirection="column">
+                  {orphanItems.map(item_12 => <OrphanItem key={item_12.id} orphan={item_12.orphan} sourceCommand={item_12.sourceCommand} isSelected={item_12.id === currentSelection?.id} />)}
+                </Box>
+                {orphanFeedback && <Text dimColor wrap="truncate-end">{orphanFeedback}</Text>}
+              </Box>}
           </Box>}
       </Dialog>
-    </Box>;
+    </Box></TaskCensusContext.Provider>;
 }
 function toListItem(task: BackgroundTaskState): ListItem {
   switch (task.type) {
@@ -582,7 +670,10 @@ function Item(t0) {
   const t5 = isSelected && !useGreyPointer ? "suggestion" : undefined;
   let t6;
   if ($[4] !== item.task || $[5] !== item.type || $[6] !== maxActivityWidth) {
-    t6 = item.type === "leader" ? <Text>@{TEAM_LEAD_NAME}</Text> : <BackgroundTaskComponent task={item.task} maxActivityWidth={maxActivityWidth} />;
+    t6 = item.type === "leader" ? <Text>@{TEAM_LEAD_NAME}</Text> : item.type === 'orphan' ? null : <Box flexDirection="row">
+          <BackgroundTaskComponent task={item.task} maxActivityWidth={maxActivityWidth} />
+          {item.type === 'local_bash' && <ShellProcSummary shellPid={item.task.shellCommand?.pid} />}
+        </Box>;
     $[4] = item.task;
     $[5] = item.type;
     $[6] = maxActivityWidth;

@@ -13,11 +13,12 @@ import { enqueuePendingNotification } from '../../utils/messageQueueManager.js';
 import type { ShellCommand } from '../../utils/ShellCommand.js';
 import { evictTaskOutput, getTaskOutputPath } from '../../utils/task/diskOutput.js';
 import { registerTask, updateTaskState } from '../../utils/task/framework.js';
+import { removeLedgerEntry } from '../../utils/task/spawnLedger.js';
 import { escapeXml } from '../../utils/xml.js';
 import { backgroundAgentTask, isLocalAgentTask } from '../LocalAgentTask/LocalAgentTask.js';
 import { isMainSessionTask } from '../LocalMainSessionTask.js';
 import { type BashTaskKind, isLocalShellTask, type LocalShellTaskState } from './guards.js';
-import { killTask } from './killShellTasks.js';
+import { killTask, recordShellSpawn } from './killShellTasks.js';
 
 /** Prefix that identifies a LocalShellTask summary to the UI collapse transform. */
 export const BACKGROUND_BASH_SUMMARY_PREFIX = 'Background command ';
@@ -174,7 +175,7 @@ export const LocalShellTask: Task = {
   name: 'LocalShellTask',
   type: 'local_bash',
   async kill(taskId, setAppState) {
-    killTask(taskId, setAppState);
+    await killTask(taskId, setAppState);
   }
 };
 export async function spawnShellTask(input: LocalShellSpawnInput & {
@@ -198,7 +199,7 @@ export async function spawnShellTask(input: LocalShellSpawnInput & {
   } = shellCommand;
   const taskId = taskOutput.taskId;
   const unregisterCleanup = registerCleanup(async () => {
-    killTask(taskId, setAppState);
+    await killTask(taskId, setAppState);
   });
   const taskState: LocalShellTaskState = {
     ...createTaskStateBase(taskId, 'local_bash', description, toolUseId),
@@ -214,6 +215,10 @@ export async function spawnShellTask(input: LocalShellSpawnInput & {
     kind
   };
   registerTask(taskState, setAppState);
+  // Ledger entry survives task eviction so orphaned descendants of a killed
+  // shell remain traceable after the task disappears from the registry.
+  // Also arms the orphan watchdog on first spawn (idempotent).
+  recordShellSpawn({ taskId, shellPid: shellCommand.pid, command, description, kind, agentId }, setAppState);
 
   // Data flows through TaskOutput automatically — no stream listeners needed.
   // Just transition to backgrounded state so the process keeps running.
@@ -241,6 +246,12 @@ export async function spawnShellTask(input: LocalShellSpawnInput & {
       };
     });
     enqueueShellNotification(taskId, description, wasKilled ? 'killed' : result.code === 0 ? 'completed' : 'failed', result.code, setAppState, toolUseId, kind, agentId);
+    // Natural completion (not a kill): the shell exited on its own, so no
+    // orphans can be traced from it — drop the ledger entry. A killed shell
+    // keeps its entry until killTask resolves the survivors.
+    if (!wasKilled) {
+      removeLedgerEntry(taskId);
+    }
     void evictTaskOutput(taskId);
   });
   return {
@@ -267,7 +278,7 @@ export function registerForeground(input: LocalShellSpawnInput & {
   } = input;
   const taskId = shellCommand.taskOutput.taskId;
   const unregisterCleanup = registerCleanup(async () => {
-    killTask(taskId, setAppState);
+    await killTask(taskId, setAppState);
   });
   const taskState: LocalShellTaskState = {
     ...createTaskStateBase(taskId, 'local_bash', description, toolUseId),
@@ -283,6 +294,10 @@ export function registerForeground(input: LocalShellSpawnInput & {
     agentId
   };
   registerTask(taskState, setAppState);
+  // Register in the orphan ledger + arm the watchdog. A foreground task can
+  // later be backgrounded (Ctrl+B / auto), at which point its kill path must
+  // have a ledger entry to capture descendants into.
+  recordShellSpawn({ taskId, shellPid: shellCommand.pid, command, description, agentId }, setAppState);
   return taskId;
 }
 
@@ -361,6 +376,9 @@ function backgroundTask(taskId: string, getAppState: () => AppState, setAppState
     } else {
       const finalStatus = result.code === 0 ? 'completed' : 'failed';
       enqueueShellNotification(taskId, description, finalStatus, result.code, setAppState, toolUseId, kind, agentId);
+    }
+    if (!wasKilled) {
+      removeLedgerEntry(taskId);
     }
     void evictTaskOutput(taskId);
   });
@@ -468,6 +486,9 @@ export function backgroundExistingForegroundTask(taskId: string, shellCommand: S
     cleanupFn?.();
     const finalStatus = wasKilled ? 'killed' : result.code === 0 ? 'completed' : 'failed';
     enqueueShellNotification(taskId, description, finalStatus, result.code, setAppState, toolUseId, undefined, agentId);
+    if (!wasKilled) {
+      removeLedgerEntry(taskId);
+    }
     void evictTaskOutput(taskId);
   });
   return true;
@@ -508,6 +529,10 @@ export function unregisterForeground(taskId: string, setAppState: SetAppState): 
       tasks: rest
     };
   });
+
+  // The command completed without ever being backgrounded — no kill can
+  // orphan descendants from it, so drop the ledger entry.
+  removeLedgerEntry(taskId);
 
   // Call cleanup outside of the state updater (avoid side effects in updater)
   cleanupFn?.();

@@ -30,6 +30,7 @@ import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
 import { getEffortNotificationText } from '../EffortIndicator.js';
 import { hasIdeSelection, IdeStatusIndicator } from '../IdeStatusIndicator.js';
 import { MemoryUsageIndicator } from '../MemoryUsageIndicator.js';
+import { OrphanProcessesIndicator } from '../OrphanProcessesIndicator.js';
 import { SentryErrorBoundary } from '../SentryErrorBoundary.js';
 import { TokenWarning } from '../TokenWarning.js';
 import { SandboxPromptFooterHint } from './SandboxPromptFooterHint.js';
@@ -351,6 +352,7 @@ function NotificationContent({
               </Text>
             </Box> : null}
       <MemoryUsageIndicator />
+      <OrphanProcessesIndicator />
       <SandboxPromptFooterHint />
     </>;
 }

@@ -133,6 +133,10 @@ export type AppState = DeepImmutable<{
   // AppState.tasks is always empty in viewer mode — the tasks live in a
   // different process.
   remoteBackgroundTaskCount: number
+  // Count of orphaned processes (survived a kill) reported by the orphan
+  // watchdog. Mirrored from the spawn ledger so the footer indicator is
+  // reactive; the ledger itself remains the source of truth.
+  orphanAlertCount: number
   // Always-on bridge: desired state (controlled by /config or footer toggle)
   replBridgeEnabled: boolean
   // Always-on bridge: true when activated via /remote-control command, false when config-driven
@@ -489,6 +493,7 @@ export function getDefaultAppState(): AppState {
     remoteSessionUrl: undefined,
     remoteConnectionStatus: 'connecting',
     remoteBackgroundTaskCount: 0,
+    orphanAlertCount: 0,
     replBridgeEnabled: false,
     replBridgeExplicit: false,
     replBridgeOutboundOnly: false,

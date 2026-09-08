@@ -58,11 +58,18 @@ test('rejects a request that receives no headers before its deadline', async () 
     signal?.addEventListener('abort', () => reject(signal.reason), { once: true })
   })) as typeof globalThis.fetch
 
-  await expect(fetchWithHeadersDeadline(
-    'https://example.test/v1/chat/completions',
-    {},
-    { timeoutMs: 20 },
-  )).rejects.toBeInstanceOf(ResponseHeadersTimeoutError)
+  // Bun never fires the unref'd deadline timer when this pending mock fetch is
+  // the only other work in the loop, so keep the loop alive while we await.
+  const keepAlive = setInterval(() => {}, 10)
+  try {
+    await expect(fetchWithHeadersDeadline(
+      'https://example.test/v1/chat/completions',
+      {},
+      { timeoutMs: 20 },
+    )).rejects.toBeInstanceOf(ResponseHeadersTimeoutError)
+  } finally {
+    clearInterval(keepAlive)
+  }
 })
 
 test('preserves caller cancellation instead of reporting a deadline', async () => {

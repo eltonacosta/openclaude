@@ -4478,14 +4478,21 @@ test('does not proxy-retry when a deadline abort surfaces as fetch failed', asyn
 
   const client = createOpenAIShimClient({}) as OpenAIShimClient
 
-  await expect(
-    client.beta.messages.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: 'hello' }],
-      max_tokens: 64,
-      stream: false,
-    }),
-  ).rejects.toThrow('no response headers within 20ms (API_TIMEOUT_MS)')
+  // Bun never fires the unref'd deadline timer when this pending mock fetch is
+  // the only other work in the loop, so keep the loop alive while we await.
+  const keepAlive = setInterval(() => {}, 10)
+  try {
+    await expect(
+      client.beta.messages.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'hello' }],
+        max_tokens: 64,
+        stream: false,
+      }),
+    ).rejects.toThrow('no response headers within 20ms (API_TIMEOUT_MS)')
+  } finally {
+    clearInterval(keepAlive)
+  }
 
   expect(fetchCalls).toBe(1)
 })
@@ -4506,14 +4513,21 @@ test('deadline wins when an abort-ignoring fetch resolves 504 afterward', async 
 
   const client = createOpenAIShimClient({}) as OpenAIShimClient
 
-  await expect(
-    client.beta.messages.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: 'hello' }],
-      max_tokens: 64,
-      stream: false,
-    }),
-  ).rejects.toThrow('no response headers within 20ms (API_TIMEOUT_MS)')
+  // Bun never fires the unref'd deadline timer when this pending mock fetch is
+  // the only other work in the loop, so keep the loop alive while we await.
+  const keepAlive = setInterval(() => {}, 10)
+  try {
+    await expect(
+      client.beta.messages.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'hello' }],
+        max_tokens: 64,
+        stream: false,
+      }),
+    ).rejects.toThrow('no response headers within 20ms (API_TIMEOUT_MS)')
+  } finally {
+    clearInterval(keepAlive)
+  }
 
   expect(fetchCalls).toBe(1)
 })

@@ -11,6 +11,7 @@ import { formatDuration, formatFileSize, truncateToWidth } from '../../utils/for
 import { tailFile } from '../../utils/fsOperations.js';
 import { getTaskOutputPath } from '../../utils/task/diskOutput.js';
 import { Byline } from '../design-system/Byline.js';
+import { ShellDescendants } from './taskCensus.js';
 import { Dialog } from '../design-system/Dialog.js';
 import { KeyboardShortcutHint } from '../design-system/KeyboardShortcutHint.js';
 type Props = {
@@ -47,7 +48,7 @@ async function getTaskOutput(shell: DeepImmutable<LocalShellTaskState>): Promise
   }
 }
 export function ShellDetailDialog(t0) {
-  const $ = _c(57);
+  const $ = _c(60);
   const {
     shell,
     onDone,
@@ -238,59 +239,69 @@ export function ShellDetailDialog(t0) {
   } else {
     t20 = $[38];
   }
-  let t21;
-  if ($[39] !== t12 || $[40] !== t17 || $[41] !== t20) {
-    t21 = <Box flexDirection="column">{t12}{t17}{t20}</Box>;
-    $[39] = t12;
-    $[40] = t17;
-    $[41] = t20;
-    $[42] = t21;
+  const shellPid = shell.shellCommand?.pid;
+  let tDesc;
+  if ($[39] !== shellPid) {
+    tDesc = shell.status === "running" && typeof shellPid === "number" ? <ShellDescendants shellPid={shellPid} /> : null;
+    $[39] = shellPid;
+    $[40] = tDesc;
   } else {
-    t21 = $[42];
+    tDesc = $[40];
+  }
+  let t21;
+  if ($[41] !== t12 || $[42] !== t17 || $[43] !== t20 || $[44] !== tDesc) {
+    t21 = <Box flexDirection="column">{t12}{t17}{t20}{tDesc}</Box>;
+    $[41] = t12;
+    $[42] = t17;
+    $[43] = t20;
+    $[44] = tDesc;
+    $[45] = t21;
+  } else {
+    t21 = $[45];
   }
   let t22;
-  if ($[43] === Symbol.for("react.memo_cache_sentinel")) {
+  if ($[46] === Symbol.for("react.memo_cache_sentinel")) {
     t22 = <Text bold={true}>Output:</Text>;
-    $[43] = t22;
+    $[46] = t22;
   } else {
-    t22 = $[43];
+    t22 = $[46];
   }
   let t23;
-  if ($[44] === Symbol.for("react.memo_cache_sentinel")) {
+  if ($[47] === Symbol.for("react.memo_cache_sentinel")) {
     t23 = <Text dimColor={true}>Loading output…</Text>;
-    $[44] = t23;
+    $[47] = t23;
   } else {
-    t23 = $[44];
+    t23 = $[47];
   }
   let t24;
-  if ($[45] !== columns || $[46] !== deferredOutputPromise) {
+  if ($[48] !== columns || $[49] !== deferredOutputPromise) {
     t24 = <Box flexDirection="column">{t22}<Suspense fallback={t23}><ShellOutputContent outputPromise={deferredOutputPromise} columns={columns} /></Suspense></Box>;
-    $[45] = columns;
-    $[46] = deferredOutputPromise;
-    $[47] = t24;
+    $[48] = columns;
+    $[49] = deferredOutputPromise;
+    $[50] = t24;
   } else {
-    t24 = $[47];
+    t24 = $[50];
   }
   let t25;
-  if ($[48] !== handleClose || $[49] !== t10 || $[50] !== t21 || $[51] !== t24 || $[52] !== t9) {
+  if ($[51] !== handleClose || $[52] !== t10 || $[53] !== t21 || $[54] !== t24 || $[55] !== t9) {
     t25 = <Dialog title={t9} onCancel={handleClose} color="background" inputGuide={t10}>{t21}{t24}</Dialog>;
-    $[48] = handleClose;
-    $[49] = t10;
-    $[50] = t21;
-    $[51] = t24;
-    $[52] = t9;
-    $[53] = t25;
+    $[51] = handleClose;
+    $[52] = t10;
+    $[53] = t21;
+    $[54] = t24;
+    $[55] = t9;
+    $[56] = t25;
   } else {
-    t25 = $[53];
+    t25 = $[56];
   }
   let t26;
-  if ($[54] !== handleKeyDown || $[55] !== t25) {
+  if ($[57] !== handleKeyDown || $[58] !== t25) {
     t26 = <Box flexDirection="column" tabIndex={0} autoFocus={true} onKeyDown={handleKeyDown}>{t25}</Box>;
-    $[54] = handleKeyDown;
-    $[55] = t25;
-    $[56] = t26;
+    $[57] = handleKeyDown;
+    $[58] = t25;
+    $[59] = t26;
   } else {
-    t26 = $[56];
+    t26 = $[59];
   }
   return t26;
 }

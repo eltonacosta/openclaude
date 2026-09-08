@@ -102,7 +102,11 @@ function createTestStreams(): {
 
 async function waitForCondition(
   predicate: () => boolean,
-  options?: { timeoutMs?: number; intervalMs?: number },
+  options?: {
+    timeoutMs?: number
+    intervalMs?: number
+    captureFrame?: () => string
+  },
 ): Promise<void> {
   // Default generously: the predicate is polled every 10ms and returns as soon
   // as it is satisfied, so a higher ceiling only adds patience for a slow/loaded
@@ -116,11 +120,16 @@ async function waitForCondition(
     if (predicate()) {
       return
     }
+    if (options?.captureFrame) lastFrame = options.captureFrame()
     await Bun.sleep(intervalMs)
   }
 
-  throw new Error('Timed out waiting for ProviderManager test condition')
+  throw new Error(
+    `Timed out waiting for ProviderManager test condition. Last frame:\n${lastFrame ?? '(none)'}`,
+  )
 }
+
+let lastFrame: string | undefined
 
 // Provider list is sorted from generated preset metadata by description, with
 // Gitlawb Opengateway pinned first, aimlapi.com second, Anthropic third, Codex OAuth injected
@@ -716,7 +725,10 @@ async function waitForFrameOutput(
   await waitForCondition(() => {
     output = stripAnsi(extractLastFrame(getOutput()))
     return predicate(output)
-  }, { timeoutMs })
+  }, {
+    timeoutMs,
+    captureFrame: () => stripAnsi(extractLastFrame(getOutput())),
+  })
 
   // The predicate matched, but Ink registers input handlers in an effect that
   // runs after the render commits. A caller that types on the next line can lose

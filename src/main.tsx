@@ -2897,6 +2897,7 @@ async function run(): Promise<CommanderCommand> {
       remoteSessionUrl: undefined,
       remoteConnectionStatus: 'connecting',
       remoteBackgroundTaskCount: 0,
+      orphanAlertCount: 0,
       replBridgeEnabled: fullRemoteControl || ccrMirrorEnabled,
       replBridgeExplicit: remoteControl,
       replBridgeOutboundOnly: ccrMirrorEnabled,
