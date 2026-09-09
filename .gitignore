@@ -25,3 +25,10 @@ plan/
 .tmp
 .tmp-*
 temp_reference/
+# Throwaway local probes — never commit (see git status Sep 2026: scratch-*).
+scratch-*
+# Private keys and certificates — never commit.
+*.pem
+*.key
+*.p12
+*.pfx

@@ -4232,6 +4232,23 @@ async function run(): Promise<CommanderCommand> {
 
   registerTaskReportCommand(program);
 
+  // Orbit Code mobile control panel: `oc serve` exposes a password-protected
+  // page on the local network for listing/starting/killing background tasks.
+  program
+    .command('serve')
+    .description('Start the Orbit Code mobile control panel (local network page)')
+    .option('--port <number>', 'HTTP port for the panel', '3100')
+    .option('--host <string>', 'Bind address (use 127.0.0.1 to block LAN access)', '0.0.0.0')
+    .option('--password <password>', 'Set the panel password non-interactively')
+    .action(async (options: {
+      port: string
+      host: string
+      password?: string
+    }) => {
+      const { serveHandler } = await import('./panel/serveCommand.js')
+      await serveHandler(options)
+    })
+
   // Doctor command - check installation health
   const doctorCommand = program
     .command('doctor')

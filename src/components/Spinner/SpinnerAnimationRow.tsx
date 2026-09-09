@@ -648,11 +648,14 @@ export function SpinnerAnimationRow({
   // Apply in both shimmer and reduced-motion arms so teammate bare status is
   // always "(thinking)", not a bare word jammed after the verb.
   const thinkingDisplay = thinkingText ? bareThinkingOnly ? `(${thinkingText})` : thinkingText : null;
-  // Live tok/s sits just below tokens in priority: only shown when the token
-  // count is already visible and the extra segment still fits in bare chrome,
-  // so it drops first on narrow terminals before any higher-value status.
+  // Live tok/s sits just below tokens in priority: shown alongside the token
+  // count when both fit, or alone when tokens were width-gated out but the
+  // rate still fits — the speedometer stays visible instead of blinking out
+  // on narrow terminals. It drops before any higher-value status otherwise.
   const tpsUsedBefore = (showSuffix ? suffixTextWidth + sep : 0) + (showTimer ? timerWidth + sep : 0) + (showTokens ? tokensWidth + sep : 0) + (showThinking && thinkingDisplay ? thinkingWidthValue + sep : 0);
-  const showTps = tpsText !== null && showTokens && physicalBareBudget >= tpsUsedBefore + tpsWidth;
+  const showTps = tpsText !== null && (showTokens
+    ? physicalBareBudget >= tpsUsedBefore + tpsWidth
+    : physicalBareBudget >= tpsWidth);
   const parts = [...(showSuffix && spinnerSuffix ? [<Text dimColor key="suffix">
             {spinnerSuffix}
           </Text>] : []), ...(showTimer ? [<Text dimColor key="elapsedTime">

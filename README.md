@@ -1,8 +1,8 @@
-# OpenClaude
+# Orbit Code
 
-OpenClaude é um CLI de agente de codificação open-source para provedores de modelo em nuvem e locais. Um workflow de terminal: prompts, ferramentas, agentes, MCP, slash commands e streaming — com OpenAI-compatible APIs, Gemini, DeepSeek, Ollama, e 200+ modelos.
+Orbit Code é um CLI de agente de codificação open-source para provedores de modelo em nuvem e locais. Um workflow de terminal: prompts, ferramentas, agentes, MCP, slash commands e streaming — com OpenAI-compatible APIs, Gemini, DeepSeek, Ollama, e 200+ modelos.
 
-Este repositório é um fork com integração ao **Orbit Router** (roteamento inteligente de modelos) e persistência global dos modelos entre sessões.
+Este repositório é um fork do OpenClaude com integração ao **Orbit Router** (roteamento inteligente de modelos) e persistência global dos modelos entre sessões. `openclaude` segue como nome do pacote, binário compatível e diretório de config (`~/.openclaude/`); **Orbit Code** é a marca da interface.
 
 ## Requisitos
 
@@ -21,7 +21,7 @@ npm install -g openclaude-<versão>.tgz
 
 ### Como funciona a versão (tags automáticas)
 
-1. A versão é escolhida por você no `package.json` (`"version": "0.30.0"`).
+1. A versão é escolhida por você no `package.json` (`"version": "0.33.2"`).
 2. Ao dar push/merge em `main`, o CI detecta que a versão mudou para uma ainda não publicada.
 3. Ele valida que é um `X.Y.Z` estrito e **maior** que a última tag (`vX.Y.Z` nunca se repete).
 4. Só depois de buildar e validar o `.tgz` em todos os OS ele cria a tag `vX.Y.Z` e a release — as tags ficam da mais recente para a mais antiga na página Releases.
@@ -69,6 +69,20 @@ O que acontece:
 
 Os modelos ficam **persistidos em cache global** (`~/.openclaude/models-cache.json`). Ao fechar e reabrir o CLI, os modelos já estão carregados — sem precisar rodar `/discovery` de novo. Rode `/discovery` quando quiser atualizar a lista.
 
+### Painel no celular (`oc serve`)
+
+Gerencie o projeto pelo navegador do celular, na rede local:
+
+```bash
+oc serve
+```
+
+1. Na primeira execução, crie a senha do painel (mínimo 8 caracteres, guardada com hash em `~/.openclaude/panel.json`).
+2. O terminal mostra as URLs de acesso e um QR code — escaneie com o celular (mesmo Wi-Fi).
+3. No painel você lista tarefas em segundo plano, vê logs stdout/stderr, inicia novas tarefas e encerra as que terminaram.
+
+O painel funciona somente na rede local. Opções: `--port 3100`, `--host 0.0.0.0` (use `--host 127.0.0.1` para bloquear a rede local), `--password <senha>` (modo não interativo).
+
 ## Desenvolvimento
 
 ```bash
@@ -87,7 +101,11 @@ Antes de abrir ou atualizar um PR, siga o contrato de validação em [CONTRIBUTI
 - `src/services/` — integrações de API, MCP, OAuth
 - `src/components/` — UI React/Ink
 - `src/utils/` — utilitários compartilhados
-- `docs/` — documentação
+- `src/entrypoints/` — CLI, MCP, SDK
+- `src/integrations/` — metadados de provedores e modelos
+- `src/tasks/` — tarefas locais, remotas e monitoramento
+- `src/panel/` — painel mobile (`oc serve`): HTTP + página de controle na rede local
+- `docs/` — documentação (mapa em [docs/repo-map.md](docs/repo-map.md))
 
 ## Licença
 

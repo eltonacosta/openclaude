@@ -14,6 +14,8 @@ const version = {
   name: 'version',
   description:
     'Print the version this session is running (not what autoupdate downloaded)',
+  // Internal-only slash command: regular users get the version from the CLI
+  // `--version` flag. Kept gated so /help stays focused on user-facing commands.
   isEnabled: () => process.env.USER_TYPE === 'ant',
   supportsNonInteractive: true,
   load: () => Promise.resolve({ call }),

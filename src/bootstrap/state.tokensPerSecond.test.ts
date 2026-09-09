@@ -47,6 +47,26 @@ test('live tok/s starts empty, can be set, and clears back to empty', () => {
   expect(getLiveTokensPerSecondIsEstimated()).toBe(false)
 })
 
+test('live tok/s falls back to the last request between turns', () => {
+  // The streaming layer clears the live value at every turn end; the spinner
+  // keeps showing the last real sample instead of blinking out.
+  expect(getLiveTokensPerSecond()).toBeNull()
+
+  setLastRequestTokensPerSecond(120)
+  expect(getLiveTokensPerSecond()).toBe(120)
+  // The fallback serves a measured value, never an estimate.
+  expect(getLiveTokensPerSecondIsEstimated()).toBe(false)
+
+  // An active stream overrides the fallback, estimates included.
+  setLiveTokensPerSecond(200, true)
+  expect(getLiveTokensPerSecond()).toBe(200)
+  expect(getLiveTokensPerSecondIsEstimated()).toBe(true)
+
+  clearLiveTokensPerSecond()
+  expect(getLiveTokensPerSecond()).toBe(120)
+  expect(getLiveTokensPerSecondIsEstimated()).toBe(false)
+})
+
 test('last-request tok/s round-trips and survives clearing the live value', () => {
   expect(getLastRequestTokensPerSecond()).toBeNull()
   setLastRequestTokensPerSecond(120)

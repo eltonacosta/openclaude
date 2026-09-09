@@ -801,11 +801,18 @@ export function clearLiveTokensPerSecond(): void {
 }
 
 export function getLiveTokensPerSecond(): number | null {
-  return STATE.liveTokensPerSecond
+  // Fall back to the last completed request when no stream is actively
+  // writing. The streaming layer clears the live value at every turn end,
+  // which used to make the spinner's tok/s segment blink out between turns
+  // (tool calls, pauses, multi-turn answers). Persisting the last real sample
+  // keeps the speedometer stable; it only reads null before the first sample.
+  return STATE.liveTokensPerSecond ?? STATE.lastRequestTokensPerSecond
 }
 
 export function getLiveTokensPerSecondIsEstimated(): boolean {
-  return STATE.liveTpsIsEstimated
+  // The fallback above serves the last *measured* request value, never an
+  // estimate — only report the flag while a live stream writes estimates.
+  return STATE.liveTokensPerSecond !== null && STATE.liveTpsIsEstimated
 }
 
 export function setLastRequestTokensPerSecond(tokensPerSecond: number): void {
