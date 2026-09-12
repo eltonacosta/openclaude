@@ -21,7 +21,7 @@ npm install -g openclaude-<versão>.tgz
 
 ### Como funciona a versão (tags automáticas)
 
-1. A versão é escolhida por você no `package.json` (`"version": "0.33.2"`).
+1. A versão é escolhida por você no `package.json` (`"version": "0.33.3"`).
 2. Ao dar push/merge em `main`, o CI detecta que a versão mudou para uma ainda não publicada.
 3. Ele valida que é um `X.Y.Z` estrito e **maior** que a última tag (`vX.Y.Z` nunca se repete).
 4. Só depois de buildar e validar o `.tgz` em todos os OS ele cria a tag `vX.Y.Z` e a release — as tags ficam da mais recente para a mais antiga na página Releases.

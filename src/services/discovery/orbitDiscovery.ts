@@ -16,6 +16,10 @@ export interface RouterRawModel {
   capabilities?: {
     reasoning?: boolean
     tools?: boolean
+    thinkingFormat?: string | null
+    thinkingEffortSupported?: boolean
+    thinkingRange?: unknown
+    thinkingCanDisable?: boolean
     [key: string]: unknown
   }
   description?: string
@@ -101,6 +105,56 @@ export async function fetchRouterModels(
   throw lastError instanceof Error
     ? lastError
     : new Error(`Failed to fetch models from Orbit Router at ${apiUrl}`)
+}
+
+/**
+ * Effort levels implied by the router-advertised `capabilities.thinkingFormat`.
+ * Mirrors the wire compatibility already assumed downstream (all registry
+ * models send `reasoning_effort`): formats on the OpenAI-compatible wire get
+ * low/medium/high/xhigh, while budget-style Claude thinking stays at high.
+ */
+const THINKING_FORMAT_EFFORT_LEVELS: Record<string, string[]> = {
+  openai: ['low', 'medium', 'high', 'xhigh'],
+  zai: ['low', 'medium', 'high', 'xhigh'],
+  deepseek: ['low', 'medium', 'high', 'xhigh'],
+  kimi: ['low', 'medium', 'high', 'xhigh'],
+  qwen: ['low', 'medium', 'high', 'xhigh'],
+  minimax: ['low', 'medium', 'high', 'xhigh'],
+  'gemini-level': ['low', 'medium', 'high', 'xhigh'],
+  'claude-adaptive': ['low', 'medium', 'high', 'xhigh'],
+  'claude-budget': ['low', 'medium', 'high'],
+}
+
+/**
+ * Derives effort levels from the router payload itself (`thinkingRange` wins
+ * when populated, otherwise the `thinkingFormat` map above). Returns [] when
+ * the router carries no level signal so callers can fall back to models.dev.
+ */
+export function extractRouterEffortLevels(model: RouterRawModel): string[] {
+  const caps = model.capabilities
+  const range = caps?.thinkingRange
+  if (Array.isArray(range)) {
+    const levels = range.filter(
+      (v): v is string => typeof v === 'string' && v.length > 0,
+    )
+    if (levels.length > 0) return [...new Set(levels)]
+  } else if (range && typeof range === 'object') {
+    const values = (range as { values?: unknown }).values
+    if (Array.isArray(values)) {
+      const levels = values.filter(
+        (v): v is string => typeof v === 'string' && v.length > 0,
+      )
+      if (levels.length > 0) return [...new Set(levels)]
+    }
+  }
+  const format =
+    typeof caps?.thinkingFormat === 'string'
+      ? caps.thinkingFormat.toLowerCase()
+      : undefined
+  if (format && THINKING_FORMAT_EFFORT_LEVELS[format]) {
+    return [...THINKING_FORMAT_EFFORT_LEVELS[format]!]
+  }
+  return []
 }
 
 /**
@@ -412,10 +466,19 @@ export async function runDiscovery(
     const parsedName = fullId.split('/').pop() || fullId
 
     // Match exact IDs first, then identify router variants by the longest
-    // models.dev name. models.dev only fills effort support when the router
-    // payload itself carries no reasoning signal.
+    // models.dev name. Precedence for levels: models.dev (explicit
+    // reasoning_options) > router payload (thinkingRange/thinkingFormat) >
+    // undefined (consumer falls back to low/medium/high). models.dev only
+    // fills effort support when the router payload itself carries no
+    // reasoning signal.
     const matchedDevModel = findDevModelInfo(fullId, devModelsCatalog)
     const devEffortLevels = matchedDevModel?.effort_levels
+    const routerEffortLevels = extractRouterEffortLevels(model)
+    const effortLevels = devEffortLevels?.length
+      ? devEffortLevels
+      : routerEffortLevels.length > 0
+        ? routerEffortLevels
+        : undefined
 
     return {
       id: fullId, // Used in API inference requests
@@ -425,7 +488,7 @@ export async function runDiscovery(
         model,
         matchedDevModel?.supports_reasoning,
       ),
-      effort_levels: devEffortLevels?.length ? devEffortLevels : undefined,
+      effort_levels: effortLevels,
       supports_tools: resolveRouterToolSupport(model),
       description: model.description,
       raw: model,

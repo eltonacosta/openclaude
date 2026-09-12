@@ -3,6 +3,7 @@ import { ModelRegistry } from '../../utils/model/modelRegistry.js'
 import { setModelRegistryCachePathOverrideForTesting } from '../../utils/model/modelRegistryCache.js'
 import {
   extractDevEffortLevels,
+  extractRouterEffortLevels,
   fetchRouterModels,
   indexDevModelsCatalog,
   runDiscovery,
@@ -403,6 +404,161 @@ describe('orbitDiscovery', () => {
     ).toEqual(['none', 'low', 'medium', 'high', 'xhigh', 'max'])
     expect(extractDevEffortLevels({ reasoning: true })).toEqual([])
     expect(extractDevEffortLevels(undefined)).toEqual([])
+  })
+
+  it('derives effort levels from the router thinkingFormat (muse-spark xhigh case)', () => {
+    expect(
+      extractRouterEffortLevels({
+        id: 'oc/muse-spark-1.3-contributor-free',
+        capabilities: {
+          reasoning: true,
+          thinkingFormat: 'openai',
+          thinkingRange: null,
+          thinkingEffortSupported: false,
+        },
+      }),
+    ).toEqual(['low', 'medium', 'high', 'xhigh'])
+    expect(
+      extractRouterEffortLevels({
+        id: 'ag/claude-model',
+        capabilities: { reasoning: true, thinkingFormat: 'claude-budget' },
+      }),
+    ).toEqual(['low', 'medium', 'high'])
+    expect(
+      extractRouterEffortLevels({
+        id: 'oc/plain',
+        capabilities: { reasoning: true, thinkingFormat: null },
+      }),
+    ).toEqual([])
+  })
+
+  it('prefers thinkingRange over thinkingFormat', () => {
+    expect(
+      extractRouterEffortLevels({
+        id: 'oc/range-model',
+        capabilities: {
+          reasoning: true,
+          thinkingFormat: 'openai',
+          thinkingRange: ['low', 'medium'],
+        },
+      }),
+    ).toEqual(['low', 'medium'])
+    expect(
+      extractRouterEffortLevels({
+        id: 'oc/range-obj-model',
+        capabilities: {
+          reasoning: true,
+          thinkingFormat: 'openai',
+          thinkingRange: { values: ['high', 'xhigh'] },
+        },
+      }),
+    ).toEqual(['high', 'xhigh'])
+  })
+
+  it('applies router levels when models.dev has no entry (muse-spark case)', async () => {
+    const mockFetch: FetchLike = async input => {
+      const url = String(input)
+      const payload = url.includes('models.dev')
+        ? {}
+        : {
+            data: [
+              {
+                id: 'oc/muse-spark-1.3-contributor-free',
+                context_length: 1048576,
+                capabilities: {
+                  reasoning: true,
+                  tools: true,
+                  thinkingFormat: 'openai',
+                  thinkingRange: null,
+                  thinkingEffortSupported: false,
+                },
+              },
+            ],
+          }
+
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const result = await runDiscovery(
+      'https://ai.servhub.xyz/v1',
+      'sk-test',
+      { fetchFn: mockFetch },
+    )
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.supports_efforts).toBe(true)
+    expect(result[0]?.effort_levels).toEqual(['low', 'medium', 'high', 'xhigh'])
+    expect(
+      ModelRegistry.getModel('oc/muse-spark-1.3-contributor-free')?.effort_levels,
+    ).toEqual(['low', 'medium', 'high', 'xhigh'])
+  })
+
+  it('keeps models.dev levels when both sources carry a signal', async () => {
+    const mockFetch: FetchLike = async input => {
+      const url = String(input)
+      const payload = url.includes('models.dev')
+        ? {
+            'spark-model': {
+              id: 'spark-model',
+              reasoning: true,
+              reasoning_options: [{ type: 'effort', values: ['low', 'medium'] }],
+            },
+          }
+        : {
+            data: [
+              {
+                id: 'oc/spark-model',
+                context_length: 128000,
+                capabilities: { reasoning: true, thinkingFormat: 'openai' },
+              },
+            ],
+          }
+
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const result = await runDiscovery(
+      'https://ai.servhub.xyz/v1',
+      'sk-test',
+      { fetchFn: mockFetch },
+    )
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.effort_levels).toEqual(['low', 'medium'])
+  })
+
+  it('leaves the existing registry untouched when the router request fails', async () => {
+    ModelRegistry.updateModels([
+      {
+        id: 'oc/kept-model',
+        displayName: 'kept-model',
+        context_window: 128000,
+        supports_efforts: true,
+        effort_levels: ['low', 'medium', 'high', 'xhigh'],
+        supports_tools: true,
+      },
+    ])
+    const failingFetch: FetchLike = async () => {
+      throw new Error('router down')
+    }
+
+    await expect(
+      runDiscovery('https://ai.servhub.xyz/v1', 'sk-test', {
+        fetchFn: failingFetch,
+      }),
+    ).rejects.toThrow()
+    expect(ModelRegistry.getModel('oc/kept-model')?.effort_levels).toEqual([
+      'low',
+      'medium',
+      'high',
+      'xhigh',
+    ])
   })
 
   it('prefers the canonical provider entry when the router prefix differs', async () => {
