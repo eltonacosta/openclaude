@@ -461,7 +461,7 @@ async function launchOpenClaude(options = {}) {
 
   if (!installed) {
     const action = await vscode.window.showErrorMessage(
-      `OpenClaude command not found: ${executable}. Install it with: npm install -g @eltonacosta/openclaude@latest`,
+      `OpenClaude command not found: ${executable}. Install the .tgz from ${OPENCLAUDE_REPO_URL}/releases with: npm install -g ./openclaude-<version>.tgz`,
       'Open Setup Guide',
       'Open Repository',
     );

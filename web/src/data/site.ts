@@ -4,8 +4,8 @@ export const SITE = {
   title: 'openclaude — open-source coding agent CLI for any model',
   description:
     'Open-source coding agent that runs in your terminal and talks to any model: OpenAI, Gemini, Ollama, GitHub Models, and 200+ more. One install, every provider.',
-  installCommand: 'npm install -g @eltonacosta/openclaude@latest',
-  npmUrl: 'https://www.npmjs.com/package/@eltonacosta/openclaude',
+  installCommand:
+    'curl -fsSL -o openclaude.tgz https://github.com/eltonacosta/openclaude/releases/latest/download/openclaude-latest.tgz && npm install -g ./openclaude.tgz',
   github: 'https://github.com/eltonacosta/openclaude',
   releasesUrl: 'https://github.com/eltonacosta/openclaude/releases',
   gitlawb: 'https://gitlawb.com',

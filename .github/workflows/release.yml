@@ -110,13 +110,19 @@ jobs:
           set -euo pipefail
           TAG="${{ needs.detect.outputs.tag }}"
           TGZ="$(ls ./openclaude-tgz/*.tgz | head -n 1)"
+          # The note gets copy-pasted by users who downloaded the asset, so it
+          # must carry the asset's own filename — not the CI-internal path.
+          TGZ_NAME="$(basename "${TGZ}")"
+          # Version-less alias so docs and the website can point at a permanent
+          # URL: /releases/latest/download/openclaude-latest.tgz
+          cp "${TGZ}" ./openclaude-latest.tgz
           # gh release create also creates the lightweight tag (pointing at the
           # pushed commit) when it does not exist yet.
-          NOTES="Installable artifact: \`npm install -g ${TGZ}\` (asset below).
-          Built on Linux by CI."
-          gh release create "${TAG}" "${TGZ}" \
+          NOTES="Installable artifact: \`npm install -g ./${TGZ_NAME}\` (asset below).
+          Run it from the folder you downloaded the asset to — the leading ./ points npm at the local file."
+          gh release create "${TAG}" "${TGZ}" ./openclaude-latest.tgz \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
             --title "${TAG}" \
             --notes "${NOTES}"
-          echo "Released ${TAG} with ${TGZ}"
+          echo "Released ${TAG} with ${TGZ} (+ openclaude-latest.tgz alias)"

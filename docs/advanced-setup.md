@@ -4,13 +4,16 @@ This guide is for users who want source builds, Bun workflows, provider profiles
 
 ## Install Options
 
-OpenClaude requires Node.js `>=22.0.0` for npm installs and runtime. Bun is
+OpenClaude requires Node.js `>=22.0.0` for global installs and runtime. Bun is
 only required when building or running from source.
 
-### Option A: npm
+### Option A: Installable release
+
+Download the `.tgz` from the [latest release](https://github.com/eltonacosta/openclaude/releases/latest), or fetch it directly:
 
 ```bash
-npm install -g @eltonacosta/openclaude@latest
+curl -fsSL -o openclaude.tgz https://github.com/eltonacosta/openclaude/releases/latest/download/openclaude-latest.tgz
+npm install -g ./openclaude.tgz
 ```
 
 ### Option B: From source with Bun
@@ -391,7 +394,7 @@ The **OpenClaude VS Code extension** can store the key in Secret Storage and set
 
 ## Optional provider packages
 
-To keep the default `npm i -g @eltonacosta/openclaude` install small and
+To keep the default global install small and
 warning-free, a few provider SDKs and the native image library are **not
 bundled**. They are loaded on demand, and the CLI prints an `npm install <pkg>`
 hint (add `-g` for the global CLI) if you enable a feature whose package is
@@ -619,7 +622,7 @@ Notes:
 - Only sanitized, telemetry-safe error messages are sent — never raw error
   messages, which may contain file paths or other identifying information.
 - `@sentry/node` is an optional dev dependency and is **not included** in the
-  default `npm install -g @eltonacosta/openclaude` install (see
+  default global install (see
   [Optional provider packages](#optional-provider-packages)). If you set
   `SENTRY_DSN` without installing it separately, reporting is silently
   disabled (no error, no crash). Install it explicitly with:

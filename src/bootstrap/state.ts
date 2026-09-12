@@ -17,7 +17,10 @@ import type { SettingSource } from 'src/utils/settings/constants.js'
 import { resetSettingsCache } from 'src/utils/settings/settingsCache.js'
 import type { PluginHookMatcher } from 'src/utils/settings/types.js'
 import { createSignal } from 'src/utils/signal.js'
-import { computeSessionAverageTps } from 'src/utils/tokensPerSecond.js'
+import {
+  computeSessionAverageTps,
+  sanitizeTokensPerSecond,
+} from 'src/utils/tokensPerSecond.js'
 
 // Union type for registered hooks - can be SDK callbacks or native plugin hooks
 type RegisteredHookMatcher = HookCallbackMatcher | PluginHookMatcher
@@ -791,7 +794,13 @@ export function setLiveTokensPerSecond(
   tokensPerSecond: number,
   isEstimated = false,
 ): void {
-  STATE.liveTokensPerSecond = tokensPerSecond
+  // Backstop for values written before the shared ceiling existed — and for
+  // any future writer that bypasses computeTokensPerSecond. Implausible
+  // spikes never reach the spinner; a rejected live value keeps the previous
+  // sample instead of blanking the speedometer.
+  const sane = sanitizeTokensPerSecond(tokensPerSecond)
+  if (sane === null) return
+  STATE.liveTokensPerSecond = sane
   STATE.liveTpsIsEstimated = isEstimated
 }
 
@@ -816,7 +825,12 @@ export function getLiveTokensPerSecondIsEstimated(): boolean {
 }
 
 export function setLastRequestTokensPerSecond(tokensPerSecond: number): void {
-  STATE.lastRequestTokensPerSecond = tokensPerSecond
+  // Same plausibility backstop as the live value: a spiked final sample must
+  // not linger on the spinner between turns via the getLiveTokensPerSecond
+  // fallback. A rejected value keeps the previous request's sample.
+  const sane = sanitizeTokensPerSecond(tokensPerSecond)
+  if (sane === null) return
+  STATE.lastRequestTokensPerSecond = sane
 }
 
 export function getLastRequestTokensPerSecond(): number | null {
@@ -825,6 +839,9 @@ export function getLastRequestTokensPerSecond(): number | null {
 
 export function addSessionTpsSample(tokens: number, durationMs: number): void {
   if (tokens <= 0 || durationMs <= 0) return
+  // Keep one short-window outlier from dragging the session average: the
+  // sample only counts when its own implied rate is plausible.
+  if (sanitizeTokensPerSecond(tokens / (durationMs / 1000)) === null) return
   STATE.sessionTpsTokens += tokens
   STATE.sessionTpsDurationMs += durationMs
 }

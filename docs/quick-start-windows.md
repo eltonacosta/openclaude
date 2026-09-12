@@ -17,8 +17,18 @@ npm --version
 
 ## 2. Install OpenClaude
 
+Download the `.tgz` from the [latest release](https://github.com/eltonacosta/openclaude/releases/latest), then install it from PowerShell:
+
 ```powershell
-npm install -g @eltonacosta/openclaude@latest
+# open PowerShell in the folder the file was downloaded to
+npm install -g .\openclaude-0.33.4.tgz
+```
+
+Or, without downloading manually:
+
+```powershell
+Invoke-WebRequest -OutFile openclaude.tgz https://github.com/eltonacosta/openclaude/releases/latest/download/openclaude-latest.tgz
+npm install -g .\openclaude.tgz
 ```
 
 ## 3. Pick One Provider
@@ -173,7 +183,8 @@ Check the basics:
 ## 6. Updating OpenClaude
 
 ```powershell
-npm install -g @eltonacosta/openclaude@latest
+Invoke-WebRequest -OutFile openclaude.tgz https://github.com/eltonacosta/openclaude/releases/latest/download/openclaude-latest.tgz
+npm install -g .\openclaude.tgz
 ```
 
 ## 7. Uninstalling OpenClaude

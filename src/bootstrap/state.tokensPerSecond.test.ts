@@ -75,6 +75,35 @@ test('last-request tok/s round-trips and survives clearing the live value', () =
   expect(getLastRequestTokensPerSecond()).toBe(120)
 })
 
+test('implausible samples never enter state', () => {
+  // The spinner persists the last-request value between turns, so a spiked
+  // sample would stay on screen; the setters reject it instead.
+  setLastRequestTokensPerSecond(120)
+  setLastRequestTokensPerSecond(15000)
+  expect(getLastRequestTokensPerSecond()).toBe(120)
+
+  setLiveTokensPerSecond(90)
+  setLiveTokensPerSecond(2500, true)
+  expect(getLiveTokensPerSecond()).toBe(90)
+  // The rejected write must not leave a stale estimate flag behind.
+  expect(getLiveTokensPerSecondIsEstimated()).toBe(false)
+
+  // A live value that has not been written yet stays null rather than
+  // becoming 0 or an inflated spike.
+  clearLiveTokensPerSecond()
+  resetStateForTests()
+  setLiveTokensPerSecond(4000)
+  expect(getLiveTokensPerSecond()).toBeNull()
+})
+
+test('session average ignores samples whose own rate is implausible', () => {
+  addSessionTpsSample(100, 2000) // 50 tok/s — counted
+  addSessionTpsSample(5000, 1000) // 5000 tok/s — rejected
+  addSessionTpsSample(6000, 20) // burst window — rejected
+
+  expect(getSessionAverageTokensPerSecond()).toBe(50)
+})
+
 test('session average weights samples by duration and skips invalid samples', () => {
   expect(getSessionAverageTokensPerSecond()).toBeNull()
 

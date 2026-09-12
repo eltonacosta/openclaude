@@ -1,11 +1,12 @@
 # Windows aliases and launchers
 
-This page documents optional PowerShell helper functions for launching OpenClaude on Windows after a global npm install.
+This page documents optional PowerShell helper functions for launching OpenClaude on Windows after a global install.
 
 These helpers are designed for the installed package workflow:
 
 ~~~powershell
-npm install -g @eltonacosta/openclaude
+Invoke-WebRequest -OutFile openclaude.tgz https://github.com/eltonacosta/openclaude/releases/latest/download/openclaude-latest.tgz
+npm install -g .\openclaude.tgz
 ~~~
 
 The helpers use the installed `openclaude` CLI command. They do not require a source checkout and do not call source-only `bun run scripts/*.ts` entrypoints.

@@ -144,7 +144,10 @@ import {
   setPromptCache1hEligible,
   setThinkingClearLatched,
 } from 'src/bootstrap/state.js'
-import { computeTokensPerSecond, estimateTokensFromText } from 'src/utils/tokensPerSecond.js'
+import {
+  computeTokensPerSecond,
+  estimateTokensFromText,
+} from 'src/utils/tokensPerSecond.js'
 import {
   AFK_MODE_BETA_HEADER,
   CONTEXT_1M_BETA_HEADER,
@@ -1970,9 +1973,10 @@ async function* queryModel(
   const newMessages: AssistantMessage[] = []
   let ttftMs = 0
   // Tokens-per-second speedometer: anchored at the first content token so
-  // retries and pre-stream latency don't deflate the rate. See
+  // retries and pre-stream latency don't deflate the rate. The warm-up gate
+  // lives in computeTokensPerSecond (MIN_TPS_ELAPSED_MS) so every call site
+  // shares one threshold; the plausibility ceiling lives there too. See
   // utils/tokensPerSecond.ts for the pure math.
-  const MIN_TPS_ELAPSED_MS = 250
   let firstContentTokenAt: number | null = null
   let generatedChars = 0
   let partialMessage: BetaMessage | undefined = undefined
@@ -2598,14 +2602,14 @@ async function* queryModel(
               generatedChars += deltaText.length
               if (firstContentTokenAt !== null) {
                 const elapsedMs = Date.now() - firstContentTokenAt
-                if (elapsedMs > MIN_TPS_ELAPSED_MS) {
-                  const tps = computeTokensPerSecond(
-                    estimateTokensFromText(generatedChars),
-                    elapsedMs,
-                  )
-                  if (tps !== null) {
-                    setLiveTokensPerSecond(tps, true)
-                  }
+                // The warm-up gate and plausibility ceiling live inside
+                // computeTokensPerSecond; null just means "not measurable yet".
+                const tps = computeTokensPerSecond(
+                  estimateTokensFromText(generatedChars),
+                  elapsedMs,
+                )
+                if (tps !== null) {
+                  setLiveTokensPerSecond(tps, true)
                 }
               }
             }
@@ -2665,14 +2669,12 @@ async function* queryModel(
             // chars-based estimate.
             if (firstContentTokenAt !== null && usage.output_tokens > 0) {
               const elapsedMs = Date.now() - firstContentTokenAt
-              if (elapsedMs > MIN_TPS_ELAPSED_MS) {
-                const tps = computeTokensPerSecond(
-                  usage.output_tokens,
-                  elapsedMs,
-                )
-                if (tps !== null) {
-                  setLiveTokensPerSecond(tps, false)
-                }
+              const tps = computeTokensPerSecond(
+                usage.output_tokens,
+                elapsedMs,
+              )
+              if (tps !== null) {
+                setLiveTokensPerSecond(tps, false)
               }
             }
             // Capture research from message_delta if available (internal only).
