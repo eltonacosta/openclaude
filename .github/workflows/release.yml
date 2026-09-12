@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   detect:
-    if: ${{ github.repository == 'eltonacosta/openclaude' }}
+    if: ${{ github.repository == 'eltonacosta/orbit-code' }}
     name: Detect release version
     runs-on: ubuntu-latest
     outputs:

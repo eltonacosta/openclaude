@@ -9,10 +9,10 @@ only required when building or running from source.
 
 ### Option A: Installable release
 
-Download the `.tgz` from the [latest release](https://github.com/eltonacosta/openclaude/releases/latest), or fetch it directly:
+Download the `.tgz` from the [latest release](https://github.com/eltonacosta/orbit-code/releases/latest), or fetch it directly:
 
 ```bash
-curl -fsSL -o openclaude.tgz https://github.com/eltonacosta/openclaude/releases/latest/download/openclaude-latest.tgz
+curl -fsSL -o openclaude.tgz https://github.com/eltonacosta/orbit-code/releases/latest/download/openclaude-latest.tgz
 npm install -g ./openclaude.tgz
 ```
 
@@ -21,7 +21,7 @@ npm install -g ./openclaude.tgz
 Use Bun `1.3.13` or newer for source builds. Older Bun versions can fail during `bun run build`.
 
 ```bash
-git clone https://github.com/eltonacosta/openclaude.git
+git clone https://github.com/eltonacosta/orbit-code.git
 cd openclaude
 
 bun install
@@ -32,7 +32,7 @@ npm link
 ### Option C: Run directly with Bun
 
 ```bash
-git clone https://github.com/eltonacosta/openclaude.git
+git clone https://github.com/eltonacosta/orbit-code.git
 cd openclaude
 
 bun install

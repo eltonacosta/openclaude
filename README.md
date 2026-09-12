@@ -13,7 +13,7 @@ Este repositório é um fork do OpenClaude com integração ao **Orbit Router** 
 
 ### Via GitHub Releases (1 comando)
 
-Cada release publica o pacote instalável `openclaude-<versão>.tgz` como asset permanente na página [Releases](https://github.com/eltonacosta/openclaude/releases), validado em Linux/macOS/Windows e em Node 22/24 (workflow **Auto Release**). Baixe o `.tgz` da release mais recente, abra o terminal na pasta do download e instale passando o caminho do arquivo:
+Cada release publica o pacote instalável `openclaude-<versão>.tgz` como asset permanente na página [Releases](https://github.com/eltonacosta/orbit-code/releases), validado em Linux/macOS/Windows e em Node 22/24 (workflow **Auto Release**). Baixe o `.tgz` da release mais recente, abra o terminal na pasta do download e instale passando o caminho do arquivo:
 
 ```bash
 # abra o terminal na pasta onde o arquivo foi baixado
@@ -25,7 +25,7 @@ No Windows (PowerShell/CMD) o equivalente é `npm install -g .\openclaude-0.33.4
 Ou, sem baixar manualmente (macOS/Linux) — o asset `openclaude-latest.tgz` aponta sempre para a release mais recente:
 
 ```bash
-curl -fsSL -o openclaude.tgz https://github.com/eltonacosta/openclaude/releases/latest/download/openclaude-latest.tgz
+curl -fsSL -o openclaude.tgz https://github.com/eltonacosta/orbit-code/releases/latest/download/openclaude-latest.tgz
 npm install -g ./openclaude.tgz
 ```
 
@@ -42,7 +42,7 @@ Para lançar uma nova versão: **bump no `package.json` + push em `main`**. Nada
 ### Via fonte (desenvolvimento)
 
 ```bash
-git clone https://github.com/eltonacosta/openclaude.git
+git clone https://github.com/eltonacosta/orbit-code.git
 cd openclaude
 bun install
 bun run build

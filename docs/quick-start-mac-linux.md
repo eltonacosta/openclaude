@@ -17,10 +17,10 @@ npm --version
 
 ## 2. Install OpenClaude
 
-Download the `.tgz` from the [latest release](https://github.com/eltonacosta/openclaude/releases/latest), or fetch it directly:
+Download the `.tgz` from the [latest release](https://github.com/eltonacosta/orbit-code/releases/latest), or fetch it directly:
 
 ```bash
-curl -fsSL -o openclaude.tgz https://github.com/eltonacosta/openclaude/releases/latest/download/openclaude-latest.tgz
+curl -fsSL -o openclaude.tgz https://github.com/eltonacosta/orbit-code/releases/latest/download/openclaude-latest.tgz
 npm install -g ./openclaude.tgz
 ```
 On Arch Linux, you can alternatively install OpenClaude via the community-maintained [AUR package](https://aur.archlinux.org/packages/openclaude):
@@ -163,7 +163,7 @@ Check the basics:
 
 **Via release:**
 ```bash
-curl -fsSL -o openclaude.tgz https://github.com/eltonacosta/openclaude/releases/latest/download/openclaude-latest.tgz
+curl -fsSL -o openclaude.tgz https://github.com/eltonacosta/orbit-code/releases/latest/download/openclaude-latest.tgz
 npm install -g ./openclaude.tgz
 ```
 

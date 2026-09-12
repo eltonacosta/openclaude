@@ -29,7 +29,7 @@ A practical VS Code companion for OpenClaude with a project-aware **Control Cent
 ## Requirements
 
 - VS Code `1.95+`
-- `openclaude` available in your terminal PATH (install the `.tgz` from the [releases page](https://github.com/eltonacosta/openclaude/releases))
+- `openclaude` available in your terminal PATH (install the `.tgz` from the [releases page](https://github.com/eltonacosta/orbit-code/releases))
 
 ## Commands
 

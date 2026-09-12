@@ -5,7 +5,7 @@ This page documents optional PowerShell helper functions for launching OpenClaud
 These helpers are designed for the installed package workflow:
 
 ~~~powershell
-Invoke-WebRequest -OutFile openclaude.tgz https://github.com/eltonacosta/openclaude/releases/latest/download/openclaude-latest.tgz
+Invoke-WebRequest -OutFile openclaude.tgz https://github.com/eltonacosta/orbit-code/releases/latest/download/openclaude-latest.tgz
 npm install -g .\openclaude.tgz
 ~~~
 

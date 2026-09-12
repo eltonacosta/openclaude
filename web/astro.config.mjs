@@ -5,7 +5,7 @@ export default defineConfig({
   site: 'https://openclaude.gitlawb.com',
   trailingSlash: 'always',
   redirects: {
-    '/changelog/': 'https://github.com/eltonacosta/openclaude/releases',
+    '/changelog/': 'https://github.com/eltonacosta/orbit-code/releases',
   },
   integrations: [sitemap()],
 })

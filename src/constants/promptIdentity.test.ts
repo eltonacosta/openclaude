@@ -33,7 +33,7 @@ beforeAll(async () => {
     DISPLAY_VERSION: '0.0.0-test',
     BUILD_TIME: new Date().toISOString(),
     ISSUES_EXPLAINER:
-      'report the issue at https://github.com/eltonacosta/openclaude/issues',
+      'report the issue at https://github.com/eltonacosta/orbit-code/issues',
     PACKAGE_URL: '@eltonacosta/openclaude',
     NATIVE_PACKAGE_URL: undefined,
   }

@@ -42,7 +42,7 @@ node --version  # should be v20+
 ### Step 3 — Clone OpenClaude
 
 ```bash
-git clone https://github.com/eltonacosta/openclaude.git
+git clone https://github.com/eltonacosta/orbit-code.git
 cd openclaude
 npm install
 npm link

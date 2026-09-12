@@ -72,7 +72,7 @@ const originalClientType = getClientType()
 const originalMainLoopModelOverride = getMainLoopModelOverride()
 
 const defaultPrAttribution =
-  '🤖 Generated with [OpenClaude](https://github.com/eltonacosta/openclaude)'
+  '🤖 Generated with [OpenClaude](https://github.com/eltonacosta/orbit-code)'
 
 function useSettings(settings: SettingsJson): void {
   testSettings = settings

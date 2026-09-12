@@ -153,10 +153,10 @@ If you want source builds, advanced provider profiles, diagnostics, or Bun-based
 
 ## Getting Help
 
-- **GitHub Discussions**: https://github.com/eltonacosta/openclaude/discussions
+- **GitHub Discussions**: https://github.com/eltonacosta/orbit-code/discussions
   Use this for Q&A, setup help, and community conversation.
 
-- **GitHub Issues**: https://github.com/eltonacosta/openclaude/issues
+- **GitHub Issues**: https://github.com/eltonacosta/orbit-code/issues
   Use this for confirmed bugs and feature requests.
 
 ### Quick diagnostic check
