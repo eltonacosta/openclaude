@@ -69,12 +69,12 @@ describe('orbitDiscovery', () => {
     }
 
     const models = await fetchRouterModels(
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
       'sk-secret-key',
       mockFetch,
     )
 
-    expect(capturedUrl).toBe('https://ai.servhub.xyz/v1/models')
+    expect(capturedUrl).toBe('http://localhost:8080/v1/models')
     expect(capturedAuthHeader).toBe('Bearer sk-secret-key')
     expect(models).toHaveLength(2)
     expect(models[0]?.id).toBe('oc/big-pickle')
@@ -114,7 +114,7 @@ describe('orbitDiscovery', () => {
     }
 
     const result = await runDiscovery(
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
       'sk-test',
       { fetchFn: mockFetch },
     )
@@ -156,7 +156,7 @@ describe('orbitDiscovery', () => {
     }
 
     const result = await runDiscovery(
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
       'sk-test',
       { fetchFn: mockFetch },
     )
@@ -202,7 +202,7 @@ describe('orbitDiscovery', () => {
     }
 
     const result = await runDiscovery(
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
       'sk-test',
       { fetchFn: mockFetch },
     )
@@ -256,7 +256,7 @@ describe('orbitDiscovery', () => {
     }
 
     const result = await runDiscovery(
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
       'sk-test',
       { fetchFn: mockFetch },
     )
@@ -313,7 +313,7 @@ describe('orbitDiscovery', () => {
     }
 
     const result = await runDiscovery(
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
       'sk-test',
       { fetchFn: mockFetch },
     )
@@ -353,7 +353,7 @@ describe('orbitDiscovery', () => {
     }
 
     const result = await runDiscovery(
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
       'sk-test',
       { fetchFn: mockFetch },
     )
@@ -383,7 +383,7 @@ describe('orbitDiscovery', () => {
     }
 
     const result = await runDiscovery(
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
       'sk-test',
       { fetchFn: mockFetch },
     )
@@ -483,7 +483,7 @@ describe('orbitDiscovery', () => {
     }
 
     const result = await runDiscovery(
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
       'sk-test',
       { fetchFn: mockFetch },
     )
@@ -524,7 +524,7 @@ describe('orbitDiscovery', () => {
     }
 
     const result = await runDiscovery(
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
       'sk-test',
       { fetchFn: mockFetch },
     )
@@ -549,7 +549,7 @@ describe('orbitDiscovery', () => {
     }
 
     await expect(
-      runDiscovery('https://ai.servhub.xyz/v1', 'sk-test', {
+      runDiscovery('http://localhost:8080/v1', 'sk-test', {
         fetchFn: failingFetch,
       }),
     ).rejects.toThrow()
@@ -590,7 +590,7 @@ describe('orbitDiscovery', () => {
     }
 
     const result = await runDiscovery(
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
       'sk-test',
       { fetchFn: mockFetch },
     )

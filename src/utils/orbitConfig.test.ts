@@ -29,32 +29,32 @@ describe('orbitConfig', () => {
   })
 
   it('normalizes URLs by stripping trailing slashes and whitespace', () => {
-    expect(normalizeRouterUrl('https://ai.servhub.xyz/v1/')).toBe(
-      'https://ai.servhub.xyz/v1',
+    expect(normalizeRouterUrl('http://localhost:8080/v1/')).toBe(
+      'http://localhost:8080/v1',
     )
-    expect(normalizeRouterUrl('  https://ai.servhub.xyz/v1///  ')).toBe(
-      'https://ai.servhub.xyz/v1',
+    expect(normalizeRouterUrl('  http://localhost:8080/v1///  ')).toBe(
+      'http://localhost:8080/v1',
     )
   })
 
   it('saves and loads Orbit Router configuration', () => {
     const saved = saveOrbitConfig(
-      'https://ai.servhub.xyz/v1/',
+      'http://localhost:8080/v1/',
       'sk-test-key-12345',
       testConfigPath,
     )
 
-    expect(saved.api_url).toBe('https://ai.servhub.xyz/v1')
-    expect(saved.router_url).toBe('https://ai.servhub.xyz/v1')
+    expect(saved.api_url).toBe('http://localhost:8080/v1')
+    expect(saved.router_url).toBe('http://localhost:8080/v1')
     expect(saved.api_key).toBe('sk-test-key-12345')
 
     const loaded = loadOrbitConfig(testConfigPath)
     expect(loaded).not.toBeNull()
-    expect(loaded?.api_url).toBe('https://ai.servhub.xyz/v1')
-    expect(loaded?.router_url).toBe('https://ai.servhub.xyz/v1')
+    expect(loaded?.api_url).toBe('http://localhost:8080/v1')
+    expect(loaded?.router_url).toBe('http://localhost:8080/v1')
     expect(loaded?.api_key).toBe('sk-test-key-12345')
 
-    expect(process.env.OPENAI_BASE_URL).toBe('https://ai.servhub.xyz/v1')
+    expect(process.env.OPENAI_BASE_URL).toBe('http://localhost:8080/v1')
     expect(process.env.OPENAI_API_KEY).toBe('sk-test-key-12345')
     expect(process.env.CLAUDE_CODE_USE_OPENAI).toBe('1')
   })

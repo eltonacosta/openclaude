@@ -40,7 +40,7 @@ describe('login command with Orbit Router arguments', () => {
     }
 
     const mockContext = {} as LocalJSXCommandContext
-    const jsx = await call(mockOnDone, mockContext, 'https://ai.servhub.xyz/v1')
+    const jsx = await call(mockOnDone, mockContext, 'http://localhost:8080/v1')
 
     expect(jsx).toBeNull()
     expect(resultMessage).toContain('Usage: /login <API_URL> <API_KEY>')
@@ -90,22 +90,22 @@ describe('login command with Orbit Router arguments', () => {
       const jsx = await call(
         mockOnDone,
         mockContext,
-        'https://ai.servhub.xyz/v1 sk-test-orbit-key',
+        'http://localhost:8080/v1 sk-test-orbit-key',
       )
 
       expect(jsx).toBeNull()
       expect(resultMessage).toContain('Orbit Router login successful!')
-      expect(resultMessage).toContain('https://ai.servhub.xyz/v1')
+      expect(resultMessage).toContain('http://localhost:8080/v1')
       expect(resultMessage).toContain('2 modelos atualizados ou adicionados')
 
       // Check process.env was updated
-      expect(process.env.OPENAI_BASE_URL).toBe('https://ai.servhub.xyz/v1')
+      expect(process.env.OPENAI_BASE_URL).toBe('http://localhost:8080/v1')
       expect(process.env.OPENAI_API_KEY).toBe('sk-test-orbit-key')
       expect(process.env.CLAUDE_CODE_USE_OPENAI).toBe('1')
 
       // Check config file was saved
       const loaded = loadOrbitConfig()
-      expect(loaded?.api_url).toBe('https://ai.servhub.xyz/v1')
+      expect(loaded?.api_url).toBe('http://localhost:8080/v1')
       expect(loaded?.api_key).toBe('sk-test-orbit-key')
 
       // Check model registry was updated

@@ -29,7 +29,7 @@ describe('discovery command', () => {
   })
 
   it('executes discovery when credentials are in environment and returns formatted text', async () => {
-    process.env.OPENAI_BASE_URL = 'https://ai.servhub.xyz/v1'
+    process.env.OPENAI_BASE_URL = 'http://localhost:8080/v1'
     process.env.OPENAI_API_KEY = 'sk-fake-key'
 
     // Mock global fetch to return router models and models.dev
@@ -62,7 +62,7 @@ describe('discovery command', () => {
       const result = await call('', {} as LocalJSXCommandContext)
       expect(result.type).toBe('text')
       if (result.type === 'text') {
-        expect(result.value).toContain('Descoberta concluída a partir de https://ai.servhub.xyz/v1')
+        expect(result.value).toContain('Descoberta concluída a partir de http://localhost:8080/v1')
         expect(result.value).toContain('1 modelos atualizados ou adicionados')
         expect(result.value).toContain('Total de modelos disponíveis (/v1/models): 1')
       }

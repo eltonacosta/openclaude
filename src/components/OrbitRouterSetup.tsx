@@ -40,7 +40,7 @@ function UrlStep(props: { onSubmit: (url: string) => void }): React.ReactElement
           }}
         />
       </Box>
-      <Text dimColor>Example: https://ai.servhub.xyz/v1 (Esc to skip)</Text>
+      <Text dimColor>Example: http://localhost:8080/v1 (Esc to skip)</Text>
     </Box>
   )
 }

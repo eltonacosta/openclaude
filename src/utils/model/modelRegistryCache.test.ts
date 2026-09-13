@@ -41,17 +41,17 @@ describe('modelRegistryCache', () => {
       },
     ]
 
-    saveModelsCache(models, 'https://ai.servhub.xyz/v1')
+    saveModelsCache(models, 'http://localhost:8080/v1')
 
     const cache = loadModelsCache()
     expect(cache).not.toBeNull()
-    expect(cache?.apiUrl).toBe('https://ai.servhub.xyz/v1')
+    expect(cache?.apiUrl).toBe('http://localhost:8080/v1')
     expect(cache?.models).toHaveLength(1)
     expect(cache?.models[0]?.id).toBe('oc/big-pickle')
   })
 
   it('refuses to write an empty model list (protects known-good cache)', () => {
-    saveModelsCache([], 'https://ai.servhub.xyz/v1')
+    saveModelsCache([], 'http://localhost:8080/v1')
     expect(existsSync(cachePath)).toBe(false)
     expect(loadModelsCache()).toBeNull()
   })
@@ -67,7 +67,7 @@ describe('modelRegistryCache', () => {
           supports_tools: true,
         },
       ],
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
     )
     // Overwrite with garbage
     writeFileSync(cachePath, '{{{ not json')
@@ -94,7 +94,7 @@ describe('modelRegistryCache', () => {
           supports_tools: true,
         },
       ],
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
     )
     expect(existsSync(cachePath)).toBe(true)
     clearModelsCache()
@@ -130,7 +130,7 @@ describe('ModelRegistry persistence integration', () => {
           supports_tools: true,
         },
       ],
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
     )
 
     expect(existsSync(cachePath)).toBe(true)
@@ -161,13 +161,13 @@ describe('ModelRegistry persistence integration', () => {
         supports_tools: true,
       },
     ]
-    saveModelsCache(models, 'https://ai.servhub.xyz/v1')
+    saveModelsCache(models, 'http://localhost:8080/v1')
 
-    const loaded = ModelRegistry.loadFromCache('https://ai.servhub.xyz/v1')
+    const loaded = ModelRegistry.loadFromCache('http://localhost:8080/v1')
     expect(loaded).toBe(true)
     expect(ModelRegistry.hasModels()).toBe(true)
     expect(ModelRegistry.getModel('oc/hydrated')?.context_window).toBe(65536)
-    expect(ModelRegistry.getCachedApiUrl()).toBe('https://ai.servhub.xyz/v1')
+    expect(ModelRegistry.getCachedApiUrl()).toBe('http://localhost:8080/v1')
   })
 
   it('refuses to load when apiUrl does not match the cached router', () => {
@@ -184,7 +184,7 @@ describe('ModelRegistry persistence integration', () => {
       'https://other.router/v1',
     )
 
-    const loaded = ModelRegistry.loadFromCache('https://ai.servhub.xyz/v1')
+    const loaded = ModelRegistry.loadFromCache('http://localhost:8080/v1')
     expect(loaded).toBe(false)
     expect(ModelRegistry.hasModels()).toBe(false)
   })
@@ -200,14 +200,14 @@ describe('ModelRegistry persistence integration', () => {
           supports_tools: true,
         },
       ],
-      'https://ai.servhub.xyz/v1/',
+      'http://localhost:8080/v1/',
     )
 
-    expect(ModelRegistry.loadFromCache('https://ai.servhub.xyz/v1')).toBe(true)
+    expect(ModelRegistry.loadFromCache('http://localhost:8080/v1')).toBe(true)
   })
 
   it('loadFromCache returns false when no cache exists', () => {
-    expect(ModelRegistry.loadFromCache('https://ai.servhub.xyz/v1')).toBe(false)
+    expect(ModelRegistry.loadFromCache('http://localhost:8080/v1')).toBe(false)
   })
 
   it('clears the persisted cache on ModelRegistry.clear()', () => {
@@ -221,7 +221,7 @@ describe('ModelRegistry persistence integration', () => {
           supports_tools: true,
         },
       ],
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
     )
     expect(existsSync(cachePath)).toBe(true)
 
@@ -241,13 +241,13 @@ describe('ModelRegistry persistence integration', () => {
           supports_tools: true,
         },
       ],
-      'https://ai.servhub.xyz/v1',
+      'http://localhost:8080/v1',
     )
 
     const raw = readFileSync(cachePath, 'utf8')
     const parsed = JSON.parse(raw)
     expect(parsed.version).toBe(1)
-    expect(parsed.apiUrl).toBe('https://ai.servhub.xyz/v1')
+    expect(parsed.apiUrl).toBe('http://localhost:8080/v1')
     expect(parsed.models[0]?.id).toBe('oc/roundtrip')
   })
 })

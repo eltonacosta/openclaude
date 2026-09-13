@@ -67,7 +67,7 @@ Dentro do CLI:
 Configure seu roteador com um único comando:
 
 ```bash
-/login https://ai.servhub.xyz/v1 sk-sua-chave
+/login http://localhost:8080/v1 sk-sua-chave
 ```
 
 O que acontece:

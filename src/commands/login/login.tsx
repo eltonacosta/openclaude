@@ -75,7 +75,7 @@ export async function call(
       }
     } else {
       onDone(
-        'Usage: /login <API_URL> <API_KEY>\nExample: /login https://ai.servhub.xyz/v1 sk-d3bb44760a989aee-qdimps-0d5e8888',
+        'Usage: /login <API_URL> <API_KEY>\nExample: /login http://localhost:8080/v1 sk-d3bb44760a989aee-qdimps-0d5e8888',
         { display: 'system' },
       )
       return null
