@@ -1040,8 +1040,8 @@
     "hash": "652a11771956c9274621cae95f54a6fa"
   },
   "src/commands/discovery/discovery.test.ts": {
-    "mtime": 1789262784565.9995,
-    "hash": "633199fea3d81b364bd6df844a4ba5bb"
+    "mtime": 1789323899893.929,
+    "hash": "158ec25486f764ce2af3bb4b7fd2e65a"
   },
   "src/commands/discovery/discovery.ts": {
     "mtime": 1789262784566.1074,
@@ -1316,12 +1316,12 @@
     "hash": "8b8559ee79442888eeab50d7b18d85d7"
   },
   "src/commands/login/login.test.ts": {
-    "mtime": 1789262784571.444,
-    "hash": "5555c9d51dba9e842888feaa6c9332d1"
+    "mtime": 1789323900219.711,
+    "hash": "d53fd44ee00e9407da2aecdf5846d5ea"
   },
   "src/commands/login/login.tsx": {
-    "mtime": 1789262784571.444,
-    "hash": "4a504aa3ceae6e8316c23d8215daf3d9"
+    "mtime": 1789323899652.303,
+    "hash": "93d43a34afed7963edba4f0900bdd673"
   },
   "src/commands/logo/index.ts": {
     "mtime": 1789262784571.444,
@@ -2440,8 +2440,8 @@
     "hash": "b143dbdba7f6e69cb2ee79c3996c8fb9"
   },
   "src/components/OrbitRouterSetup.tsx": {
-    "mtime": 1789262784590.535,
-    "hash": "88d93ef46a1207fc8c14a1d379264516"
+    "mtime": 1789323899375.6047,
+    "hash": "ce42e8b16bf2a78ae76b08c3d768679b"
   },
   "src/components/OutputStylePicker.tsx": {
     "mtime": 1789262784591.535,
@@ -7108,8 +7108,8 @@
     "hash": "b5feb355af0001fbd36da5b15c2eea7c"
   },
   "src/services/discovery/orbitDiscovery.test.ts": {
-    "mtime": 1789262784680.6016,
-    "hash": "27e3dc6e9f96db206a643af1e4a63814"
+    "mtime": 1789323900484.578,
+    "hash": "2824424b78f0b18879c2bf33269fc9ee"
   },
   "src/services/discovery/orbitDiscovery.ts": {
     "mtime": 1789262784681.3945,
@@ -10972,8 +10972,8 @@
     "hash": "082e1983eaad86c3967dd0b3789fe9ed"
   },
   "src/utils/model/modelRegistryCache.test.ts": {
-    "mtime": 1789262784747.1128,
-    "hash": "863507572bb8b96397cad2db2ca0f805"
+    "mtime": 1789323901043.031,
+    "hash": "a631d9128a84af6852808ba8cdd681b3"
   },
   "src/utils/model/modelRegistryCache.ts": {
     "mtime": 1789262784747.1128,
@@ -11136,8 +11136,8 @@
     "hash": "2eb9ced6c71331228858288033e344a4"
   },
   "src/utils/orbitConfig.test.ts": {
-    "mtime": 1789262784749.5376,
-    "hash": "3d953743123c1459ebe6b99d7502d628"
+    "mtime": 1789323901078.998,
+    "hash": "cc85f336aa0640c949c3386f118487a5"
   },
   "src/utils/orbitConfig.ts": {
     "mtime": 1789262784749.5376,
@@ -13376,8 +13376,8 @@
     "hash": "97802a9a5044fdca20eb78abc0bcad13"
   },
   "README.md": {
-    "mtime": 1789262784474.533,
-    "hash": "420928022b28b7d787c1be1ca5db1a50"
+    "mtime": 1789323899067.5342,
+    "hash": "8276fc9a8f60186c1a36325bcf2cf18f"
   },
   "SECURITY.md": {
     "mtime": 1789262784474.533,
@@ -13460,8 +13460,8 @@
     "hash": "77c76f36040a1fac25b298263baf2881"
   },
   "docs/quick-start-windows.md": {
-    "mtime": 1789262784485.6172,
-    "hash": "40c9070a1749c53c0cf74b13baf23373"
+    "mtime": 1789323769336.6199,
+    "hash": "10360eef17edd7809b7d444d8a9a2206"
   },
   "docs/repo-map.md": {
     "mtime": 1789262784485.6172,
@@ -13766,5 +13766,9 @@
   "src/utils/permissions/yolo-classifier-prompts/permissions_external.txt": {
     "mtime": 1789262784752.5376,
     "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  ".graphify/2026-09-13/GRAPH_REPORT.md": {
+    "mtime": 1789323069577.493,
+    "hash": "d459597bf58ea08b1cf1b4f206251158"
   }
 }
