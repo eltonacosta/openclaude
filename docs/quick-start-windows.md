@@ -21,7 +21,7 @@ Download the `.tgz` from the [latest release](https://github.com/eltonacosta/orb
 
 ```powershell
 # open PowerShell in the folder the file was downloaded to
-npm install -g .\openclaude-0.33.4.tgz
+npm install -g .\openclaude-0.33.5.tgz
 ```
 
 Or, without downloading manually:
