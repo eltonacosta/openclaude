@@ -91,7 +91,9 @@ describe('snip nudge policy', () => {
   test('keeps small effective windows eligible for early nudges', () => {
     process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = '40000'
 
-    expect(getSnipNudgeStartThreshold('claude-sonnet-4')).toBe(10_000)
+    // Effective window is 20k; the 80% auto-compact threshold is 16k and
+    // the start threshold leads it by one repeat interval (10k floor).
+    expect(getSnipNudgeStartThreshold('claude-sonnet-4')).toBe(16_400)
     expect(getSnipNudgeRepeatInterval('claude-sonnet-4')).toBe(10_000)
   })
 })
@@ -114,7 +116,7 @@ describe('getContextEfficiencyAttachment', () => {
       process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = '40000'
 
       expect(
-        getContextEfficiencyAttachment([userMessage(12_000)], 'claude-sonnet-4'),
+        getContextEfficiencyAttachment([userMessage(17_000)], 'claude-sonnet-4'),
       ).toEqual([{ type: 'context_efficiency' }])
     },
   )

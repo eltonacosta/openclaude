@@ -290,7 +290,7 @@ describe('getEffectiveContextWindowSize', () => {
 
     try {
       expect(getEffectiveContextWindowSize('cx/gpt-5.6-sol')).toBe(980_000)
-      expect(getAutoCompactThreshold('cx/gpt-5.6-sol')).toBe(950_000)
+      expect(getAutoCompactThreshold('cx/gpt-5.6-sol')).toBe(784_000)
     } finally {
       ModelRegistry.clear()
       setModelRegistryCachePathOverrideForTesting(undefined)
@@ -359,8 +359,8 @@ describe('getAutoCompactThreshold', () => {
     const { getAutoCompactThreshold } = await importAutoCompact()
 
     // The effective window is floor-raised to 33k in this configuration.
-    // Selecting the 30k buffer here would compact after only 3k tokens.
-    expect(getAutoCompactThreshold('claude-sonnet-4')).toBe(20_000)
+    // The 80% threshold stays positive on top of the floor.
+    expect(getAutoCompactThreshold('claude-sonnet-4')).toBe(26_400)
   })
 
   test('keeps compaction and warning thresholds usable across mid-sized windows', async () => {
@@ -370,7 +370,7 @@ describe('getAutoCompactThreshold', () => {
 
     // The effective window is 44k. Do not consume so much headroom that the
     // 20k warning/error buffer makes a fresh conversation immediately warn.
-    expect(getAutoCompactThreshold('claude-sonnet-4')).toBe(30_000)
+    expect(getAutoCompactThreshold('claude-sonnet-4')).toBe(35_200)
     expect(
       calculateTokenWarningState(0, 'claude-sonnet-4').isAboveWarningThreshold,
     ).toBe(false)

@@ -1066,14 +1066,31 @@ async function* queryLoop(
         )
       : 0
     if (canForceCompact) {
+      const overMessageLimit = isAboveMaxActiveMessagesLimit(
+        messagesForQuery.length,
+        activeMessageLimit,
+      )
+      const overHardCap = isAboveMaxActiveMessagesLimit(
+        messagesForQuery.length,
+        getMaxActiveMessagesHardCap(),
+      )
+      // The default message-count guard only forces compaction when token
+      // usage is also within 20% of the limit: a long tail of tiny tool
+      // results must not summarize a session sitting at low context.
+      // Explicit/legacy count overrides and the hard-cap safety net still
+      // force immediately. The token check runs only when the count gate
+      // matched and no override applies.
+      const nearTokenLimit =
+        overMessageLimit &&
+        !hasActiveMessageLimitOverride &&
+        !overHardCap &&
+        tokenCountWithEstimation(messagesForQuery) - snipTokensFreed >=
+          getAutoCompactThreshold(toolUseContext.options.mainLoopModel)
       if (
-        isAboveMaxActiveMessagesLimit(messagesForQuery.length, activeMessageLimit) &&
-        (isAutoCompactEnabled() ||
-          hasActiveMessageLimitOverride ||
-          isAboveMaxActiveMessagesLimit(
-            messagesForQuery.length,
-            getMaxActiveMessagesHardCap(),
-          ))
+        overMessageLimit &&
+        (hasActiveMessageLimitOverride ||
+          overHardCap ||
+          (isAutoCompactEnabled() && nearTokenLimit))
       ) {
         tracking = {
           ...(tracking ?? { compacted: false, turnId: '', turnCounter: 0 }),
@@ -1472,13 +1489,21 @@ async function* queryLoop(
       }
     }
 
-    if (
+    // The default count guard only blocks near the token limit (same 80%
+    // rule as the force path above). Explicit/legacy overrides and the
+    // hard cap still block immediately.
+    const overActiveMessageLimit = isAboveMaxActiveMessagesLimit(
+      messagesForQuery.length,
+      activeMessageLimit,
+    )
+    const shouldBlockOnMessageCount =
       shouldEnforceActiveMessageLimit &&
-      isAboveMaxActiveMessagesLimit(
-        messagesForQuery.length,
-        activeMessageLimit,
-      )
-    ) {
+      overActiveMessageLimit &&
+      (hasActiveMessageLimitOverride ||
+        isAboveActiveMessageHardCap ||
+        tokenCountWithEstimation(messagesForQuery) - snipTokensFreed >=
+          getAutoCompactThreshold(toolUseContext.options.mainLoopModel))
+    if (shouldBlockOnMessageCount) {
       yield createAssistantAPIErrorMessage({
         content:
           'The conversation is over the active-message safety limit, but automatic compaction could not reduce it before the next provider request. OpenClaude stopped before sending another oversized request. Run /compact, undo recent large tool output, or start a new session with /new.',

@@ -368,13 +368,27 @@ test('default active-message hard cap forces compaction', async () => {
   expect(seenTracking[0]?.forceReason).toBe('message-count')
 })
 
-test('unset message threshold forces compaction at the 200-message default', async () => {
+test('unset message threshold stays idle below the 80% token mark', async () => {
   const { terminal, callModel, seenTracking } =
     await runMessageCountHardCapQuery(manySmallMessages(201))
 
   expect(terminal.reason).toBe('max_turns')
   expect(callModel).toHaveBeenCalledTimes(1)
+  expect(seenTracking[0]?.forceReason).toBeUndefined()
+})
+
+test('unset message threshold forces compaction near the token limit', async () => {
+  const threshold = getAutoCompactThreshold('claude-sonnet-4')
+  const { terminal, callModel, seenTracking } =
+    await runMessageCountHardCapQuery([
+      overAutoCompactThresholdMessage(),
+      ...manySmallMessages(201),
+    ])
+
+  expect(terminal.reason).toBe('max_turns')
+  expect(callModel).toHaveBeenCalledTimes(1)
   expect(seenTracking[0]?.forceReason).toBe('message-count')
+  expect(threshold).toBeGreaterThan(0)
 })
 
 test('invalid legacy message threshold keeps the 200-message default', async () => {
@@ -385,7 +399,7 @@ test('invalid legacy message threshold keeps the 200-message default', async () 
 
   expect(terminal.reason).toBe('max_turns')
   expect(callModel).toHaveBeenCalledTimes(1)
-  expect(seenTracking[0]?.forceReason).toBe('message-count')
+  expect(seenTracking[0]?.forceReason).toBeUndefined()
 })
 
 test('disabled auto-compact leaves the default message threshold inactive', async () => {

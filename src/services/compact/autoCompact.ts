@@ -59,11 +59,9 @@ export function getEffectiveContextWindowSize(
 
   // Floor: effective context must be at least the summary reservation plus a
   // usable buffer. If it goes lower, the auto-compact threshold becomes
-  // negative and fires on every message (issue #635). This floor buffer is
-  // intentionally decoupled from AUTOCOMPACT_BUFFER_TOKENS: the latter is the
-  // (larger) threshold buffer used by getAutoCompactThreshold(), while this
-  // stays at the conservative 13k so getEffectiveContextWindowSize() —
-  // also consumed by tool-history compression — is unchanged (issue #1949).
+  // negative and fires on every message (issue #635). The percentage-based
+  // threshold in getAutoCompactThreshold() stays positive on top of this
+  // floor, so tool-history compression consumers are unchanged.
   const autocompactBuffer = AUTOCOMPACT_FLOOR_BUFFER_TOKENS
   const effectiveContext = contextWindow - reservedTokensForSummary
   return Math.max(effectiveContext, reservedTokensForSummary + autocompactBuffer)
@@ -88,18 +86,16 @@ export type AutoCompactTrackingState = {
   forceReason?: 'memory-pressure' | 'message-count' | 'context-overflow'
 }
 
-// Threshold buffer: auto-compact fires when token usage reaches this far below
-// the effective context window. Bumped from 13_000 -> 30_000 so compaction runs
-// earlier and with less accumulated history, bounding per-turn latency growth
-// in a single session (issue #1949). Kept below the effective-context floor
-// (AUTOCOMPACT_FLOOR_BUFFER_TOKENS) for large-context models; for small-context
-// models getAutoCompactThreshold() falls back to the floor buffer so the
-// threshold can never go negative (issue #635).
-export const AUTOCOMPACT_BUFFER_TOKENS = 30_000
+// Threshold fraction: auto-compact fires only when token usage reaches this
+// fraction of the effective context window (i.e. within the last 20% before
+// the limit). Percentage-based so large-context models don't compact after a
+// few thousand tokens. The effective-context floor in
+// getEffectiveContextWindowSize() keeps the threshold positive for
+// small-context models (issue #635).
+export const AUTOCOMPACT_THRESHOLD_FRACTION = 0.8
 
 // Conservative floor buffer for getEffectiveContextWindowSize(). Must guarantee
-// a non-negative auto-compact threshold for small-context models, so it stays at
-// the pre-#1949 value of 13_000 and is decoupled from AUTOCOMPACT_BUFFER_TOKENS.
+// a non-negative auto-compact threshold for small-context models.
 const AUTOCOMPACT_FLOOR_BUFFER_TOKENS = 13_000
 
 export const WARNING_THRESHOLD_BUFFER_TOKENS = 20_000
@@ -197,19 +193,14 @@ export function resolveAutoCompactCircuitBreakerState(args: {
 export function getAutoCompactThreshold(model: string): number {
   const effectiveContextWindow = getEffectiveContextWindowSize(model)
 
-  // Increase the buffer gradually between the old 13k and new 30k values.
-  // This keeps the threshold monotonic and preserves the 20k warning/error
-  // headroom consumed by calculateTokenWarningState(). A direct switch would
-  // make a one-token window increase cause an earlier compact, and can make
-  // the warning threshold negative for mid-sized context windows.
-  const buffer = Math.min(
-    AUTOCOMPACT_BUFFER_TOKENS,
-    Math.max(
-      AUTOCOMPACT_FLOOR_BUFFER_TOKENS,
-      effectiveContextWindow - AUTOCOMPACT_BUFFER_TOKENS,
-    ),
+  // Fire only within the last 20% before the limit: threshold is 80% of the
+  // effective window. Linear so it stays monotonic, and the effective-context
+  // floor keeps it positive for small-context models (issue #635). The 20k
+  // warning/error headroom in calculateTokenWarningState() is consumed below
+  // this threshold.
+  const autocompactThreshold = Math.floor(
+    effectiveContextWindow * AUTOCOMPACT_THRESHOLD_FRACTION,
   )
-  const autocompactThreshold = effectiveContextWindow - buffer
 
   // Override for easier testing of autocompact
   const envPercent = process.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE

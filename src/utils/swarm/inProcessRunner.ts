@@ -1210,10 +1210,24 @@ export async function runInProcessTeammate(
       )
       const shouldCompactForTokens =
         isAutoCompactEnabled() && tokenCount > tokenThreshold
-      const shouldCompactForMessages = isAboveMaxActiveMessagesLimit(
+      const overMessageLimit = isAboveMaxActiveMessagesLimit(
         allMessages.length,
         activeMessageLimit,
       )
+      const overHardCap = isAboveMaxActiveMessagesLimit(
+        allMessages.length,
+        getMaxActiveMessagesHardCap(),
+      )
+      // Same rule as the main query loop: the default count guard only
+      // compacts near the token limit; explicit/legacy overrides and the
+      // hard-cap safety net still compact immediately.
+      const hasCountOverride =
+        hasExplicitMessageCountThreshold || hasLegacyMessageCountThreshold
+      const shouldCompactForMessages =
+        overMessageLimit &&
+        (hasCountOverride ||
+          overHardCap ||
+          (isAutoCompactEnabled() && tokenCount > tokenThreshold))
       if (shouldCompactForTokens || shouldCompactForMessages) {
         logForDebugging(
           `[inProcessRunner] ${identity.agentId} compacting history (${tokenCount} tokens, ${allMessages.length} messages)`,
