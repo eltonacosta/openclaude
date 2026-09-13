@@ -123,3 +123,5 @@ CODE_OF_CONDUCT* text
 *.db binary
 *.sqlite binary
 *.sqlite3 binary
+.graphify/graph.json merge=graphify-json
+graphify-out/graph.json merge=graphify-json
