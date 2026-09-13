@@ -32,3 +32,15 @@ scratch-*
 *.key
 *.p12
 *.pfx
+# graphify ephemeral state — never commit (branch/worktree tracking,
+# stale flags, local AST/semantic cache). Commit-safe: graph.json,
+# GRAPH_REPORT.md, manifest.json, cost.json, graph.html.
+.graphify/branch.json
+.graphify/worktree.json
+.graphify/needs_update
+.graphify/cache/
+.graphify/.graphify_detect.json
+.graphify/.graphify_detect_semantic.json
+.graphify/.graphify_analysis.json
+.graphify/label-instructions/
+.graphify/scope.json
